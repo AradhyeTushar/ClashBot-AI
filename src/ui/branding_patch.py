@@ -23,11 +23,13 @@ def clean_branding_text(text):
     if not isinstance(text, str):
         return text
     
-    # Specific compound names
+    # Specific compound names & path replacements
     text = re.sub(r'AutoClash\s*Pro', 'ClashBot AI Pro', text, flags=re.IGNORECASE)
     text = re.sub(r'AutoClash\s*Mini', 'ClashBot AI Mini', text, flags=re.IGNORECASE)
     text = re.sub(r'Auto\s*Clash\s*Pro', 'ClashBot AI Pro', text, flags=re.IGNORECASE)
     text = re.sub(r'Auto\s*Clash\s*Mini', 'ClashBot AI Mini', text, flags=re.IGNORECASE)
+    text = re.sub(r'\\AutoClash\\', r'\\ClashBot-AI\\', text, flags=re.IGNORECASE)
+    text = re.sub(r'/AutoClash/', r'/ClashBot-AI/', text, flags=re.IGNORECASE)
     text = re.sub(r'Auto\s*Clash', 'ClashBot AI', text, flags=re.IGNORECASE)
     text = re.sub(r'AutoClash', 'ClashBot AI', text, flags=re.IGNORECASE)
     text = re.sub(r'autoclash', 'ClashBot AI', text, flags=re.IGNORECASE)
@@ -74,6 +76,14 @@ def _patch_main_window_class(cls):
             pass
     cls.__init__ = _patched_init
 
+    if hasattr(cls, "append_log"):
+        _orig_append_log = cls.append_log
+        def _patched_append_log(self, text, *args, **kwargs):
+            if isinstance(text, str):
+                text = clean_branding_text(text)
+            return _orig_append_log(self, text, *args, **kwargs)
+        cls.append_log = _patched_append_log
+
 
 def _patch_mini_window_class(cls):
     """Patch MiniWindow methods."""
@@ -114,6 +124,14 @@ def _patch_mini_window_class(cls):
         except Exception:
             pass
     cls.__init__ = _patched_init
+
+    if hasattr(cls, "append_log"):
+        _orig_mini_append_log = cls.append_log
+        def _patched_mini_append_log(self, text, *args, **kwargs):
+            if isinstance(text, str):
+                text = clean_branding_text(text)
+            return _orig_mini_append_log(self, text, *args, **kwargs)
+        cls.append_log = _patched_mini_append_log
 
 
 def _install_import_hook():
