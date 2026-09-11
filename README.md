@@ -13,6 +13,7 @@
 [![PySide6](https://img.shields.io/badge/GUI-PySide6%20%2F%20Qt6-41CD52.svg?style=for-the-badge&logo=qt&logoColor=white)](https://www.qt.io/)
 [![OpenCV](https://img.shields.io/badge/Computer_Vision-OpenCV%204.8-5C3EE8.svg?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F7DF1E.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![License Status](https://img.shields.io/badge/Edition-Free%20%26%20Unlocked-00E676.svg?style=for-the-badge)](https://github.com/AradhyeTushar/ClashBot-AI)
 [![Architecture](https://img.shields.io/badge/Architecture-Multithreaded%20Async-FF4081.svg?style=for-the-badge)](#-system-architecture)
 [![Maintained by](https://img.shields.io/badge/Author-Aradhye%20Tushar-00B0FF.svg?style=for-the-badge&logo=github&logoColor=white)](https://github.com/AradhyeTushar)
 
@@ -185,6 +186,9 @@ ClashBot-AI/
 ---
 
 ## ⚡ Quick Start
+
+> [!TIP]
+> **100% Free & Unlocked:** No activation keys, product serials, or third-party servers required. ClashBot AI is completely unlocked for personal, research, and portfolio use.
 
 ### Option 1: 1-Click Portable Launcher (Recommended)
 1. Clone the repository:
