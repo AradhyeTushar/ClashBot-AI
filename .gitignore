@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.so
+venv/
+env/
+.env
+
+# Logs & Runtime Dumps
+*.log
+logs/
+launch.log
+
+# IDE & Editor files
+.vscode/
+.vs/
+*.suo
+*.user
+*.userosscache
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
