@@ -134,6 +134,20 @@ def _patch_mini_window_class(cls):
         cls.append_log = _patched_mini_append_log
 
 
+def _patch_bot_worker(mod):
+    """Patch TeeStream in bot_worker to ensure session log file and streams use ClashBot AI."""
+    if hasattr(mod, "TeeStream"):
+        cls = mod.TeeStream
+        if cls not in _PATCHED_CLASSES:
+            _PATCHED_CLASSES.add(cls)
+            _orig_write = cls.write
+            def _patched_write(self, data):
+                if isinstance(data, str):
+                    data = clean_branding_text(data)
+                return _orig_write(self, data)
+            cls.write = _patched_write
+
+
 def _install_import_hook():
     """Install import hook to auto-patch window classes whenever modules are loaded."""
     global _HOOK_INSTALLED
@@ -155,6 +169,9 @@ def _install_import_hook():
                     m = sys.modules[mod_name]
                     if hasattr(m, "MiniWindow"):
                         _patch_mini_window_class(m.MiniWindow)
+            for mod_name in ("ui.bot_worker", "bot_worker"):
+                if mod_name in sys.modules:
+                    _patch_bot_worker(sys.modules[mod_name])
         except Exception:
             pass
         return mod
@@ -247,6 +264,12 @@ def apply_branding_patches():
     try:
         from ui import mini_window
         _patch_mini_window_class(mini_window.MiniWindow)
+    except Exception:
+        pass
+
+    try:
+        from ui import bot_worker
+        _patch_bot_worker(bot_worker)
     except Exception:
         pass
 
