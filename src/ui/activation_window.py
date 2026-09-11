@@ -27,6 +27,12 @@ from PySide6.QtWidgets import (
     QPushButton, QCheckBox, QMessageBox, QFrame, QToolButton
 )
 
+try:
+    from ui.branding_patch import apply_branding_patches
+    apply_branding_patches()
+except Exception:
+    pass
+
 from license_manager import (
     load_saved_key, save_key, validate_license_details,
     save_license_meta, resolve_writable_path

@@ -324,3 +324,10 @@ def start_license_heartbeat(get_current_key=None, on_invalid=None, interval_seco
 def stop_license_heartbeat() -> None:
     """Stop license heartbeat thread."""
     _heartbeat_stop_event.set()
+
+
+try:
+    from ui.branding_patch import apply_branding_patches
+    apply_branding_patches()
+except Exception:
+    pass

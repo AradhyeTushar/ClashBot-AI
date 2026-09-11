@@ -17,6 +17,11 @@ os.chdir(src_dir)
 
 if __name__ == "__main__":
     print("[+] Starting ClashBot AI Engine...")
+    try:
+        from ui.branding_patch import apply_branding_patches
+        apply_branding_patches()
+    except Exception as e:
+        print(f"[!] Notice: Branding patch initialization: {e}")
     from ui import gui
     gui.WINDOW_SETTINGS_APP = "ClashBotAI"
     gui.WINDOW_SETTINGS_ORG = "ClashBotAI"
