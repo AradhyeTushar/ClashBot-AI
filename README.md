@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="src/assets/icon.png" width="180" height="180" alt="ClashBot AI Official Logo" />
+
 # ⚡ ClashBot AI
 ### *Enterprise-Grade Autonomous Game Intelligence & Computer Vision Platform*
 

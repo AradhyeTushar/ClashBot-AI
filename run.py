@@ -18,4 +18,6 @@ os.chdir(src_dir)
 if __name__ == "__main__":
     print("[+] Starting ClashBot AI Engine...")
     from ui import gui
+    gui.WINDOW_SETTINGS_APP = "ClashBotAI"
+    gui.WINDOW_SETTINGS_ORG = "ClashBotAI"
     sys.exit(gui.run())
