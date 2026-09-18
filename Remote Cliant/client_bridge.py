@@ -92,7 +92,13 @@ class ClientBridge(QObject):
         """Continuously attempt connection and handle incoming messages via WebSockets."""
         while self._running:
             try:
-                url = f"wss://{self.host}" if self.port in (443, 80) or "cloudflared" in self.host or "devtushar" in self.host else f"ws://{self.host}:{self.port}"
+                host_target = self.host.strip()
+                if "/" not in host_target and ("devtushar" in host_target or "clashbot" in host_target):
+                    path_suffix = "/ws/bot1"
+                else:
+                    path_suffix = ""
+
+                url = f"wss://{host_target}{path_suffix}" if self.port in (443, 80) or "cloudflared" in host_target or "devtushar" in host_target else f"ws://{host_target}:{self.port}"
                 if url.startswith("wss://") and self.port == 80:
                     url = url.replace("wss://", "ws://")
                 

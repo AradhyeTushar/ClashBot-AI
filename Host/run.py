@@ -7,6 +7,7 @@ License: MIT License - Copyright (c) 2026 Aradhye Tushar
 """
 import os
 import sys
+import time
 
 project_root = os.path.dirname(os.path.abspath(__file__))
 src_dir = os.path.join(project_root, "src")
@@ -22,12 +23,19 @@ if __name__ == "__main__":
         apply_branding_patches()
     except Exception as e:
         print(f"[!] Notice: Branding patch initialization: {e}")
+
     try:
         from ui.ui2client import start_ui2client_server
         start_ui2client_server()
     except Exception as e:
         print(f"[!] Notice: ui2client startup: {e}")
-    from ui import gui
-    gui.WINDOW_SETTINGS_APP = "ClashBotAI"
-    gui.WINDOW_SETTINGS_ORG = "ClashBotAI"
-    sys.exit(gui.run())
+
+    try:
+        from ui import gui
+        gui.WINDOW_SETTINGS_APP = "ClashBotAI"
+        gui.WINDOW_SETTINGS_ORG = "ClashBotAI"
+        sys.exit(gui.run())
+    except Exception as e:
+        print(f"[+] ClashBot Cloud Server running headlessly ({e}).")
+        while True:
+            time.sleep(1)
