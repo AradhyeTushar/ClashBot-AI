@@ -15,6 +15,8 @@ import time
 import base64
 import socket
 import threading
+import asyncio
+import websockets
 from typing import Dict, Any, Optional
 
 from PySide6.QtCore import QObject, Signal
@@ -53,6 +55,7 @@ class ClientBridge(QObject):
         self._thread: Optional[threading.Thread] = None
         self._send_lock = threading.Lock()
         self._adb_worker: Optional[Any] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
     def start(self) -> None:
         """Start the background connection worker thread."""
@@ -72,7 +75,7 @@ class ClientBridge(QObject):
         self._connected = False
         if self._socket:
             try:
-                self._socket.close()
+                asyncio.run_coroutine_threadsafe(self._socket.close(), asyncio.get_event_loop())
             except Exception:
                 pass
             self._socket = None
@@ -81,37 +84,33 @@ class ClientBridge(QObject):
         return self._connected
 
     def _connection_loop(self) -> None:
-        """Continuously attempt connection and handle incoming messages."""
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        self._loop.run_until_complete(self._async_connection_loop())
+
+    async def _async_connection_loop(self) -> None:
+        """Continuously attempt connection and handle incoming messages via WebSockets."""
         while self._running:
             try:
-                self.status_message.emit(f"Connecting to Host UI ({self.host}:{self.port})...")
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(5.0)
-                s.connect((self.host, self.port))
-                s.settimeout(None)
-
-                self._socket = s
-                self._connected = True
-                self.connected.emit()
-                self.status_message.emit("Connected to Host UI Engine")
-
-                buffer = ""
-                while self._running and self._connected:
-                    data = s.recv(4096)
-                    if not data:
-                        break
-                    buffer += data.decode("utf-8", errors="replace")
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
-                        if not line:
-                            continue
-                        self._handle_incoming_message(line)
-
-            except (ConnectionRefusedError, socket.timeout):
-                pass
-            except (ConnectionResetError, BrokenPipeError):
-                pass
+                url = f"wss://{self.host}" if self.port in (443, 80) or "cloudflared" in self.host or "devtushar" in self.host else f"ws://{self.host}:{self.port}"
+                if url.startswith("wss://") and self.port == 80:
+                    url = url.replace("wss://", "ws://")
+                
+                self.status_message.emit(f"Connecting to {url}...")
+                
+                async with websockets.connect(url, max_size=2**24, ping_interval=None) as ws:
+                    self._socket = ws
+                    self._connected = True
+                    self.connected.emit()
+                    self.status_message.emit("Connected to Host UI Engine via WebSockets")
+                    
+                    async for message in ws:
+                        if not self._running:
+                            break
+                        self._handle_incoming_message(message)
+                        
+            except websockets.exceptions.WebSocketException as e:
+                self.status_message.emit(f"WebSocket notice: {e}")
             except Exception as e:
                 self.status_message.emit(f"Bridge notice: {e}")
             finally:
@@ -119,15 +118,10 @@ class ClientBridge(QObject):
                     self._connected = False
                     self.disconnected.emit()
                     self.status_message.emit("Disconnected from Host UI. Retrying...")
-                if self._socket:
-                    try:
-                        self._socket.close()
-                    except Exception:
-                        pass
-                    self._socket = None
+                self._socket = None
 
             if self._running:
-                time.sleep(1.5)
+                await asyncio.sleep(1.5)
 
     def _handle_incoming_message(self, line: str) -> None:
         """Parse line as JSON and emit corresponding Qt signal."""
@@ -201,9 +195,8 @@ class ClientBridge(QObject):
         if not self._connected or not self._socket:
             return False
         try:
-            payload = (json.dumps(action_dict, ensure_ascii=False) + "\n").encode("utf-8")
-            with self._send_lock:
-                self._socket.sendall(payload)
+            payload = json.dumps(action_dict, ensure_ascii=False)
+            asyncio.run_coroutine_threadsafe(self._socket.send(payload), self._loop)
             return True
         except Exception as e:
             print(f"[RemoteBridge] Send error: {e}")

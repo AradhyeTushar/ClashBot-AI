@@ -8,9 +8,13 @@ services:
     environment:
       - CLASHBOT_HOST_IP=0.0.0.0
     ports:
-      # Expose this container's bridge to a unique host port
-      # Remote Client will connect to VPS_IP:29171
       - "29171:29170"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clashbot-bot1.rule=Host(`bot1.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.services.clashbot-bot1.loadbalancer.server.port=29170"
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
@@ -22,9 +26,13 @@ services:
     environment:
       - CLASHBOT_HOST_IP=0.0.0.0
     ports:
-      # Expose this container's bridge to a unique host port
-      # Remote Client will connect to VPS_IP:29172
       - "29172:29170"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clashbot-bot2.rule=Host(`bot2.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.services.clashbot-bot2.loadbalancer.server.port=29170"
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
@@ -37,6 +45,12 @@ services:
       - CLASHBOT_HOST_IP=0.0.0.0
     ports:
       - "29173:29170"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clashbot-bot3.rule=Host(`bot3.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.services.clashbot-bot3.loadbalancer.server.port=29170"
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5

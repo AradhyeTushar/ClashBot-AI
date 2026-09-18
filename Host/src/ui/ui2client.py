@@ -16,8 +16,8 @@ import os
 import sys
 import json
 import base64
-import socket
-import select
+import asyncio
+import websockets
 import threading
 import traceback
 from typing import Optional, Dict, Any, List
@@ -31,12 +31,12 @@ from PySide6.QtWidgets import (
 HOST_PORT = 29170
 HOST_IP = os.environ.get("CLASHBOT_HOST_IP", "0.0.0.0")
 
-_server_socket: Optional[socket.socket] = None
+_ws_loop: Optional[asyncio.AbstractEventLoop] = None
 _server_thread: Optional[threading.Thread] = None
 _server_running = False
 
 _clients_lock = threading.Lock()
-_connected_clients: List[socket.socket] = []
+_connected_clients: set = set()
 
 _host_window: Optional[Any] = None
 _is_updating_from_remote = False
@@ -74,23 +74,16 @@ def _json_serialize(data: Dict[str, Any]) -> bytes:
     return (json.dumps(data, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+async def _broadcast_async(raw: str) -> None:
+    if _connected_clients:
+        websockets.broadcast(_connected_clients, raw)
+
 def broadcast(message_dict: Dict[str, Any]) -> None:
     """Send a message to all connected Remote Clients."""
-    raw = _json_serialize(message_dict)
-    with _clients_lock:
-        stale = []
-        for client in _connected_clients:
-            try:
-                client.sendall(raw)
-            except Exception:
-                stale.append(client)
-        for client in stale:
-            if client in _connected_clients:
-                _connected_clients.remove(client)
-                try:
-                    client.close()
-                except Exception:
-                    pass
+    raw = _json_serialize(message_dict).decode('utf-8')
+    global _ws_loop
+    if _ws_loop and _ws_loop.is_running():
+        asyncio.run_coroutine_threadsafe(_broadcast_async(raw), _ws_loop)
 
 
 def broadcast_log(text: str) -> None:
@@ -652,133 +645,88 @@ def _dispatch_to_gui(action_data: Dict[str, Any]) -> None:
 
 
 
-def _handle_client_connection(client_sock: socket.socket, addr: tuple) -> None:
-    """Thread worker handling a connected Remote Client."""
+async def ws_handler(websocket):
+    """Asynchronous worker handling a connected Remote Client via WebSockets."""
+    addr = websocket.remote_address
     print(f"[ui2client] Remote Client connected from {addr}")
     with _clients_lock:
-        _connected_clients.append(client_sock)
+        _connected_clients.add(websocket)
 
-    # Immediately send the full state snapshot
     try:
         snap = get_full_state_snapshot()
-        client_sock.sendall(_json_serialize(snap))
-        # Request the client to start streaming local frames to us
-        client_sock.sendall(_json_serialize({"type": "start_stream", "fps": 4.0, "quality": 75}))
-    except Exception as e:
-        print(f"[ui2client] Error sending initial snapshot/stream request: {e}")
+        await websocket.send(_json_serialize(snap).decode('utf-8'))
+        await websocket.send(json.dumps({"type": "start_stream", "fps": 4.0, "quality": 75}))
 
-    buffer = ""
-    try:
-        while _server_running:
-            data = client_sock.recv(32768)
-            if not data:
-                break
-            buffer += data.decode("utf-8", errors="replace")
-            while "\n" in buffer:
-                line, buffer = buffer.split("\n", 1)
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    msg = json.loads(line)
-                    msg_type = msg.get("type", "action")
-                    if msg_type == "ping":
-                        client_sock.sendall(_json_serialize({"type": "pong"}))
-                    elif msg_type == "get_state":
-                        client_sock.sendall(_json_serialize(get_full_state_snapshot()))
-                    elif msg_type == "device_frame":
-                        global _latest_client_frame
-                        data_b64 = msg.get("data", "")
-                        if data_b64:
-                            try:
-                                _latest_client_frame = base64.b64decode(data_b64)
-                            except Exception:
-                                pass
-                    else:
-                        # Action command from Remote Client -> dispatch to Qt GUI
-                        _dispatch_to_gui(msg)
-                except json.JSONDecodeError:
-                    pass
-    except (ConnectionResetError, BrokenPipeError):
+        async for message in websocket:
+            try:
+                msg = json.loads(message)
+                msg_type = msg.get("type", "action")
+                if msg_type == "ping":
+                    await websocket.send(json.dumps({"type": "pong"}))
+                elif msg_type == "get_state":
+                    await websocket.send(_json_serialize(get_full_state_snapshot()).decode('utf-8'))
+                elif msg_type == "device_frame":
+                    global _latest_client_frame
+                    data_b64 = msg.get("data", "")
+                    if data_b64:
+                        try:
+                            _latest_client_frame = base64.b64decode(data_b64)
+                        except Exception:
+                            pass
+                else:
+                    _dispatch_to_gui(msg)
+            except json.JSONDecodeError:
+                pass
+    except websockets.exceptions.ConnectionClosed:
         pass
     except Exception as e:
         print(f"[ui2client] Client connection exception: {e}")
     finally:
         with _clients_lock:
-            if client_sock in _connected_clients:
-                _connected_clients.remove(client_sock)
-        try:
-            client_sock.close()
-        except Exception:
-            pass
-        try:
-            print(f"[ui2client] Remote Client disconnected: {addr}")
-        except Exception:
-            pass
+            if websocket in _connected_clients:
+                _connected_clients.remove(websocket)
+        print(f"[ui2client] Remote Client disconnected: {addr}")
 
 
-def _server_loop() -> None:
+def _server_loop_async(port: int) -> None:
     """Background listener loop accepting incoming Remote Client connections."""
-    global _server_socket, _server_running
-    while _server_running and _server_socket:
-        try:
-            client_sock, addr = _server_socket.accept()
-            t = threading.Thread(
-                target=_handle_client_connection,
-                args=(client_sock, addr),
-                daemon=True,
-                name=f"ui2client-worker-{addr}"
-            )
-            t.start()
-        except Exception:
-            break
-
+    global _ws_loop
+    _ws_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(_ws_loop)
+    start_server = websockets.serve(ws_handler, HOST_IP, port, max_size=2**24)
+    _ws_loop.run_until_complete(start_server)
+    _ws_loop.run_forever()
 
 def start_ui2client_server(port: int = HOST_PORT) -> bool:
     """Start the background ui2client bridge server."""
-    global _server_socket, _server_thread, _server_running
+    global _server_thread, _server_running
 
     if _server_running:
         return True
 
     try:
-        _server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        _server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        _server_socket.bind((HOST_IP, port))
-        _server_socket.listen(5)
         _server_running = True
-
         _server_thread = threading.Thread(
-            target=_server_loop,
+            target=_server_loop_async,
+            args=(port,),
             daemon=True,
             name="ui2client-server-loop"
         )
         _server_thread.start()
-        print(f"[+] [ui2client] Bridge Server listening on {HOST_IP}:{port}")
+        print(f"[+] [ui2client] Bridge Server (WebSockets) listening on ws://{HOST_IP}:{port}")
         return True
     except Exception as e:
-        print(f"[!] [ui2client] Failed to start bridge server on port {port}: {e}")
+        print(f"[!] [ui2client] Failed to start WebSocket server on port {port}: {e}")
         return False
 
 
 def stop_ui2client_server() -> None:
     """Stop the background ui2client bridge server."""
-    global _server_socket, _server_running
+    global _server_running, _ws_loop
     _server_running = False
-    if _server_socket:
-        try:
-            _server_socket.close()
-        except Exception:
-            pass
-        _server_socket = None
+    if _ws_loop and _ws_loop.is_running():
+        _ws_loop.call_soon_threadsafe(_ws_loop.stop)
     with _clients_lock:
-        for c in _connected_clients:
-            try:
-                c.close()
-            except Exception:
-                pass
         _connected_clients.clear()
-
-
 # Export alias so "ui2cliant" can also be imported if needed
 ui2cliant = sys.modules[__name__]
