@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcb-xfixes0 \
     libxcb-shape0 \
     x11-utils \
+    xauth \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory for the bot
