@@ -1,0 +1,5 @@
+emulator_select items: ['BlueStacks', 'LDPlayer', 'MuMu', 'Other']
+currentText: BlueStacks
+emulator_instance_select items: []
+currentText: 
+emulator_install_path_input: 

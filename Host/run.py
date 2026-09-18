@@ -22,6 +22,11 @@ if __name__ == "__main__":
         apply_branding_patches()
     except Exception as e:
         print(f"[!] Notice: Branding patch initialization: {e}")
+    try:
+        from ui.ui2client import start_ui2client_server
+        start_ui2client_server()
+    except Exception as e:
+        print(f"[!] Notice: ui2client startup: {e}")
     from ui import gui
     gui.WINDOW_SETTINGS_APP = "ClashBotAI"
     gui.WINDOW_SETTINGS_ORG = "ClashBotAI"

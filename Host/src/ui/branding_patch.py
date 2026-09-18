@@ -74,6 +74,12 @@ def _patch_main_window_class(cls):
                         lbl.setText(c)
         except Exception:
             pass
+        if os.environ.get("CLASHBOT_CLIENT_MODE") != "1":
+            try:
+                from ui import ui2client
+                ui2client.bind_host_main_window(self)
+            except Exception as e:
+                print(f"[!] Notice: ui2client binding error: {e}")
     cls.__init__ = _patched_init
 
     if hasattr(cls, "append_log"):
@@ -81,6 +87,11 @@ def _patch_main_window_class(cls):
         def _patched_append_log(self, text, *args, **kwargs):
             if isinstance(text, str):
                 text = clean_branding_text(text)
+            try:
+                from ui.ui2client import broadcast_log
+                broadcast_log(text)
+            except Exception:
+                pass
             return _orig_append_log(self, text, *args, **kwargs)
         cls.append_log = _patched_append_log
 
@@ -286,3 +297,12 @@ def apply_branding_patches():
         gui.set_windows_app_user_model_id = _patched_app_id
     except Exception:
         pass
+
+    # Start ui2client bridge server for Remote Client (Host only)
+    if os.environ.get("CLASHBOT_CLIENT_MODE") != "1":
+        try:
+            from ui import ui2client
+            ui2client.start_ui2client_server()
+        except Exception as e:
+            print(f"[!] Notice: ui2client server startup: {e}")
+
