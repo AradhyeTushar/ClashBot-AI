@@ -13,8 +13,14 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.swarm.network=dokploy-network"
       - "traefik.http.routers.clashbot-bot1.rule=Host(`bot1.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-bot1.entrypoints=web,websecure"
+      - "traefik.http.routers.clashbot-bot1.tls=true"
+      - "traefik.http.routers.clashbot-bot1.tls.certresolver=letsencrypt"
       - "traefik.http.services.clashbot-bot1.loadbalancer.server.port=29170"
+      - "traefik.http.services.clashbot-bot1.loadbalancer.passhostheader=true"
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
@@ -31,8 +37,14 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.swarm.network=dokploy-network"
       - "traefik.http.routers.clashbot-bot2.rule=Host(`bot2.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-bot2.entrypoints=web,websecure"
+      - "traefik.http.routers.clashbot-bot2.tls=true"
+      - "traefik.http.routers.clashbot-bot2.tls.certresolver=letsencrypt"
       - "traefik.http.services.clashbot-bot2.loadbalancer.server.port=29170"
+      - "traefik.http.services.clashbot-bot2.loadbalancer.passhostheader=true"
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
@@ -49,8 +61,14 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.swarm.network=dokploy-network"
       - "traefik.http.routers.clashbot-bot3.rule=Host(`bot3.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-bot3.entrypoints=web,websecure"
+      - "traefik.http.routers.clashbot-bot3.tls=true"
+      - "traefik.http.routers.clashbot-bot3.tls.certresolver=letsencrypt"
       - "traefik.http.services.clashbot-bot3.loadbalancer.server.port=29170"
+      - "traefik.http.services.clashbot-bot3.loadbalancer.passhostheader=true"
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
@@ -63,8 +81,14 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.swarm.network=dokploy-network"
       - "traefik.http.routers.clashbot-web.rule=Host(`clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-web.entrypoints=web,websecure"
+      - "traefik.http.routers.clashbot-web.tls=true"
+      - "traefik.http.routers.clashbot-web.tls.certresolver=letsencrypt"
       - "traefik.http.services.clashbot-web.loadbalancer.server.port=80"
+      - "traefik.http.services.clashbot-web.loadbalancer.passhostheader=true"
     volumes:
       - ./Website:/usr/share/nginx/html:ro
     restart: unless-stopped
