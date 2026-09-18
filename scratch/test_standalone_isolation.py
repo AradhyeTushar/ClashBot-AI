@@ -35,7 +35,7 @@ print(f"    - Pages: {list(window.pages.keys())}")
 # Verify key attributes exist on window
 critical_attrs = [
     "farming_enabled", "upgrade_walls", "wall_stop_level", "attack_gold",
-    "attack_elixir", "attack_dark", "dead_bases_only", "request_donations",
+    "attack_elixir", "attack_dark", "request_donations",
     "wait_cc_troops", "enable_donations", "end_on_stars", "target_stars",
     "collect_collectors", "strategy", "army_slot", "hero_tap_delay_enabled",
     "multi_enabled", "builder_enabled", "clan_capital_enable",

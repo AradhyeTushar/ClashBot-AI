@@ -82,8 +82,8 @@ for _ in range(15):
 print(f"[+] Client UI received state snapshot:")
 print(f"    - farming_enabled checked: {client_win.farming_enabled.isChecked()}")
 print(f"    - attack_gold value: {client_win.attack_gold.value()}")
-badge_text = client_win.title_bar.conn_badge.text().encode('ascii', errors='replace').decode('ascii')
-print(f"    - Title Badge Text: {badge_text}")
+badge_text = client_win.title_bar.title_lbl.text().encode('ascii', errors='replace').decode('ascii')
+print(f"    - Title Text: {badge_text}")
 
 # Test 1: Client toggles upgrade_walls -> Verify Host receives it
 print("\n[3] Testing Client Action -> Host Execution:")
