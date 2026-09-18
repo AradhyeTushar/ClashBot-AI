@@ -24,7 +24,7 @@ from typing import Optional, Dict, Any, List
 
 from PySide6.QtCore import QTimer, QMetaObject, Qt, QObject, Signal, Slot
 from PySide6.QtWidgets import (
-    QWidget, QPushButton, QToolButton, QCheckBox, QRadioButton,
+    QApplication, QWidget, QPushButton, QToolButton, QCheckBox, QRadioButton,
     QLineEdit, QComboBox, QSpinBox, QSlider, QTextEdit, QLabel
 )
 
@@ -53,6 +53,21 @@ PAGE_NAMES = [
 
 # Track connected widget signals to avoid duplicate connections
 _hooked_widgets = set()
+
+# In-memory cloud state tracking for headless server mode
+_cloud_state: Dict[str, Any] = {
+    "status": "Idle",
+    "mode": "GLOBAL MODE",
+    "key_status": "License Expires: Lifetime",
+    "window_title": "ClashBot AI Pro v2.1.5 | Cloud Host (Online)",
+    "active_page": "General",
+    "active_page_idx": 0,
+    "settings_drawer_expanded": False,
+    "checkboxes": {},
+    "comboboxes": {},
+    "spinboxes": {},
+    "running": False,
+}
 
 
 class HostBridgeDispatcher(QObject):
@@ -167,7 +182,22 @@ def get_full_state_snapshot() -> Dict[str, Any]:
 
     w = get_host_window()
     if not w:
-        state["status"] = "no_window"
+        # Headless Cloud Server State
+        state["ready"] = True
+        state["window_title"] = _cloud_state.get("window_title", "ClashBot AI Pro v2.1.5 | Cloud Host (Online)")
+        state["bot_status"] = _cloud_state.get("status", "Idle")
+        state["active_page"] = _cloud_state.get("active_page", "General")
+        state["active_page_idx"] = _cloud_state.get("active_page_idx", 0)
+        state["settings_drawer_expanded"] = _cloud_state.get("settings_drawer_expanded", False)
+        state["checkboxes"] = dict(_cloud_state.get("checkboxes", {}))
+        state["comboboxes"] = dict(_cloud_state.get("comboboxes", {}))
+        state["spinboxes"] = dict(_cloud_state.get("spinboxes", {}))
+        state["labels"] = {
+            "status": _cloud_state.get("status", "Idle"),
+            "mode": _cloud_state.get("mode", "GLOBAL MODE"),
+            "key_status": _cloud_state.get("key_status", "License Expires: Lifetime")
+        }
+        state["status"] = _cloud_state.get("status", "Idle")
         return state
 
     state["ready"] = True
@@ -421,16 +451,64 @@ def execute_remote_action_on_gui_thread(action: Dict[str, Any]) -> None:
     Executes a remote action safely on the Qt GUI main thread.
     Simulates clicks and updates widgets with visible visual feedback.
     """
-    global _is_updating_from_remote
     w = get_host_window()
+    cmd = action.get("action")
+    target = action.get("target")
+    value = action.get("value")
+
     if not w:
-        # If Host window is still loading (splash screen active), retry shortly
-        retries = action.get("_retry_count", 0)
-        if retries < 25:
-            action["_retry_count"] = retries + 1
-            QTimer.singleShot(250, lambda: execute_remote_action_on_gui_thread(action))
-            return
-        print("[ui2client] Cannot execute action: Host MainWindow not bound yet.")
+        # Headless Cloud Server execution
+        print(f"[ui2client] Cloud action: cmd={cmd}, target={target}, value={value}")
+        if cmd == "switch_page":
+            page_name = target or value
+            _cloud_state["active_page"] = page_name
+            broadcast({
+                "type": "page_switched",
+                "page_name": page_name
+            })
+
+        elif cmd == "click_button":
+            btn_name = (target or "").lower()
+            if btn_name in ("start", "start_bot", "miniquickstart"):
+                _cloud_state["running"] = True
+                _cloud_state["status"] = "Running..."
+                broadcast_log("[Bot] Automation started by Remote Client.")
+                broadcast({"type": "widget_update", "widget_type": "QLabel", "name": "status", "value": "Running..."})
+                broadcast({"type": "action_executed", "action": "click_button", "target": "start"})
+
+            elif btn_name in ("pause", "pause_bot", "miniquickpause"):
+                _cloud_state["running"] = False
+                _cloud_state["status"] = "Paused"
+                broadcast_log("[Bot] Automation paused by Remote Client.")
+                broadcast({"type": "widget_update", "widget_type": "QLabel", "name": "status", "value": "Paused"})
+                broadcast({"type": "action_executed", "action": "click_button", "target": "pause"})
+
+            elif btn_name in ("stop", "stop_bot", "miniquickstop"):
+                _cloud_state["running"] = False
+                _cloud_state["status"] = "Idle"
+                broadcast_log("[Bot] Automation stopped by Remote Client.")
+                broadcast({"type": "widget_update", "widget_type": "QLabel", "name": "status", "value": "Idle"})
+                broadcast({"type": "action_executed", "action": "click_button", "target": "stop"})
+
+            elif btn_name in ("settings", "settings_toggle", "settingstogglebtn"):
+                _cloud_state["settings_drawer_expanded"] = not _cloud_state.get("settings_drawer_expanded", False)
+                broadcast({"type": "action_executed", "action": "click_button", "target": btn_name})
+
+            else:
+                broadcast({"type": "action_executed", "action": "click_button", "target": btn_name})
+
+        elif cmd in ("toggle_checkbox", "set_checkbox"):
+            _cloud_state["checkboxes"][target] = bool(value)
+            broadcast({"type": "widget_update", "widget_type": "checkbox", "name": target, "value": bool(value)})
+
+        elif cmd == "set_combobox":
+            _cloud_state["comboboxes"][target] = {"currentText": str(value)}
+            broadcast({"type": "widget_update", "widget_type": "combobox", "name": target, "value": str(value)})
+
+        elif cmd == "set_spinbox":
+            _cloud_state["spinboxes"][target] = int(value)
+            broadcast({"type": "widget_update", "widget_type": "spinbox", "name": target, "value": int(value)})
+
         return
 
     cmd = action.get("action")
@@ -636,12 +714,14 @@ def execute_remote_action_on_gui_thread(action: Dict[str, Any]) -> None:
         _is_updating_from_remote = False
 
 
-# Connect Qt signal for thread-safe cross-thread GUI dispatch
-_dispatcher.dispatch_action.connect(_dispatcher.on_dispatch, Qt.QueuedConnection)
-
 def _dispatch_to_gui(action_data: Dict[str, Any]) -> None:
-    """Schedule action execution on the Qt main GUI thread via queued signal."""
-    _dispatcher.dispatch_action.emit(action_data)
+    """Schedule action execution on the Qt main GUI thread or directly in headless mode."""
+    w = get_host_window()
+    app = QApplication.instance()
+    if w and app:
+        _dispatcher.dispatch_action.emit(action_data)
+    else:
+        execute_remote_action_on_gui_thread(action_data)
 
 
 

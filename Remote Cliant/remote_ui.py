@@ -1306,6 +1306,21 @@ class RemoteMainWindow(QMainWindow):
         """User clicked a control button (Start, Pause, Stop, Restart ADB)."""
         if self._is_syncing or not self.bridge:
             return
+
+        btn_lower = btn_name.lower()
+        if btn_lower in ("start", "start_bot"):
+            self.status.setText("Running...")
+            self.status.setStyleSheet("color: #10B981; font-size: 13px; font-weight: bold;")
+            self.append_log("[Control] Start command sent. Automation is running.")
+        elif btn_lower in ("pause", "pause_bot"):
+            self.status.setText("Paused")
+            self.status.setStyleSheet("color: #F59E0B; font-size: 13px; font-weight: bold;")
+            self.append_log("[Control] Pause command sent.")
+        elif btn_lower in ("stop", "stop_bot"):
+            self.status.setText("Idle")
+            self.status.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 500;")
+            self.append_log("[Control] Stop command sent.")
+
         self.bridge.send_action({
             "action": "click_button",
             "target": btn_name
@@ -1351,6 +1366,7 @@ class RemoteMainWindow(QMainWindow):
         self.bridge.widget_updated.connect(self._on_widget_updated)
         self.bridge.page_switched.connect(self._on_remote_page_switched)
         self.bridge.log_received.connect(self.append_log)
+        self.bridge.action_confirmed.connect(self._on_action_confirmed)
         self.bridge.window_title_received.connect(self.title_bar.set_title)
 
     def _on_server_connected(self):
@@ -1477,6 +1493,17 @@ class RemoteMainWindow(QMainWindow):
         """Receive individual widget update from Host."""
         self._is_syncing = True
         try:
+            if name.lower() in ("status", "bot_status"):
+                st = str(value)
+                self.status.setText(st)
+                if "run" in st.lower():
+                    self.status.setStyleSheet("color: #10B981; font-size: 13px; font-weight: bold;")
+                elif "pause" in st.lower():
+                    self.status.setStyleSheet("color: #F59E0B; font-size: 13px; font-weight: bold;")
+                else:
+                    self.status.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 500;")
+                return
+
             w = getattr(self, name, None)
             if w_type == "checkbox" and isinstance(w, QCheckBox):
                 w.setChecked(bool(value))
@@ -1486,6 +1513,21 @@ class RemoteMainWindow(QMainWindow):
                 w.setValue(int(value))
         finally:
             self._is_syncing = False
+
+    def _on_action_confirmed(self, data: dict):
+        """Handle confirmed remote action echoed back from Host."""
+        action = data.get("action", "")
+        target = (data.get("target", "") or "").lower()
+        if action == "click_button":
+            if target in ("start", "start_bot"):
+                self.status.setText("Running...")
+                self.status.setStyleSheet("color: #10B981; font-size: 13px; font-weight: bold;")
+            elif target in ("pause", "pause_bot"):
+                self.status.setText("Paused")
+                self.status.setStyleSheet("color: #F59E0B; font-size: 13px; font-weight: bold;")
+            elif target in ("stop", "stop_bot"):
+                self.status.setText("Idle")
+                self.status.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 500;")
 
     def _on_remote_page_switched(self, page_name: str, page_idx: int):
         """Server changed page."""
