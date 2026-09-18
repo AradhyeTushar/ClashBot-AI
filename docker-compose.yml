@@ -46,7 +46,7 @@ services:
     image: nginx:alpine
     container_name: clashbot_website
     ports:
-      - "80:80"
+      - "8181:80"
     volumes:
       - ./Website:/usr/share/nginx/html:ro
     restart: unless-stopped
