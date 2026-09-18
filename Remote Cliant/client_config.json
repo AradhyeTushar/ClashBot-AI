@@ -1,5 +1,5 @@
 {
-  "SERVER_HOST": "127.0.0.1",
+  "SERVER_HOST": "server.clashbot-ai.com",
   "SERVER_PORT": 29170,
   "AUTO_CONNECT": true,
   "TIMEOUT_SECONDS": 5.0

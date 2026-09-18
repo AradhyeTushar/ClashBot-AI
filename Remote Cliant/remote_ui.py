@@ -238,10 +238,9 @@ class RemoteMainWindow(QMainWindow):
         self.website_btn.setFixedHeight(38)
         self.website_btn.setCursor(Qt.PointingHandCursor)
         
-        # Determine URL based on dev environment or production (for now just using absolute path for local)
-        # Using a fallback to a real domain if needed, but for demonstration we'll open the local HTML.
-        website_path = os.path.abspath(os.path.join(CLIENT_DIR, "..", "Website", "index.html"))
-        self.website_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(website_path)))
+        # Determine URL based on dev environment or production
+        website_url = "https://www.clashbot-ai.com"
+        self.website_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(website_url)))
         layout.addWidget(self.website_btn)
 
         # Settings Toggle Button at bottom of sidebar (exact Host layout)
