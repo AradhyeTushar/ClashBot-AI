@@ -55,6 +55,11 @@ def _patch_main_window_class(cls):
                 self.titlebar_title.setText(cleaned)
             except Exception:
                 pass
+        try:
+            from ui.ui2client import broadcast_title
+            broadcast_title(cleaned)
+        except Exception:
+            pass
     cls._update_window_title = _patched_update_window_title
 
     _orig_init = cls.__init__

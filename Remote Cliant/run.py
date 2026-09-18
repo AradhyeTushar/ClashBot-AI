@@ -115,11 +115,22 @@ def main():
     # Initialize Client Bridge
     bridge = ClientBridge(host=server_host, port=server_port)
 
+    # Initialize Local ADB Worker & Attach to Bridge
+    try:
+        from remote_adb_worker import RemoteAdbWorker
+        adb_worker = RemoteAdbWorker()
+        bridge.attach_adb_worker(adb_worker)
+        # Attempt auto-detecting a local emulator
+        adb_worker.auto_detect_device()
+    except Exception as e:
+        print(f"[!] Warning: Could not initialize RemoteAdbWorker: {e}")
+
     # Create & Display Window
     window = RemoteMainWindow(bridge=bridge)
-    window.title_bar.server_info_lbl.setText(f"Server: {server_host}:{server_port}")
-    window.server_ip_input.setText(server_host)
-    window.server_port_input.setText(str(server_port))
+    if hasattr(window, "server_ip_input") and window.server_ip_input:
+        window.server_ip_input.setText(server_host)
+    if hasattr(window, "server_port_input") and window.server_port_input:
+        window.server_port_input.setText(str(server_port))
     window.show()
 
     # Start Bridge Connection in background

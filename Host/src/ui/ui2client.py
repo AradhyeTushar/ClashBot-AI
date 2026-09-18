@@ -15,6 +15,7 @@ providing immediate visual click feedback on the Host UI window.
 import os
 import sys
 import json
+import base64
 import socket
 import select
 import threading
@@ -41,6 +42,7 @@ _host_window: Optional[Any] = None
 _is_updating_from_remote = False
 _log_buffer: List[str] = []
 _MAX_LOG_BUFFER = 200
+_latest_client_frame: Optional[bytes] = None
 
 # Mapping of page names to their indices or attributes
 PAGE_NAMES = [
@@ -107,6 +109,27 @@ def broadcast_log(text: str) -> None:
     })
 
 
+def broadcast_title(title: str) -> None:
+    """Send live window title to all connected Remote Clients."""
+    broadcast({
+        "type": "window_title",
+        "title": str(title)
+    })
+
+
+def get_latest_client_frame() -> Optional[bytes]:
+    """Retrieve the latest frame received from the Remote Client."""
+    global _latest_client_frame
+    return _latest_client_frame
+
+
+def send_device_action(action_dict: Dict[str, Any]) -> None:
+    """Send a raw device action (tap/swipe/keyevent) to the Remote Client."""
+    # Tag it for the RemoteAdbWorker to pick up
+    action_dict["type"] = "device_action"
+    broadcast(action_dict)
+
+
 def get_host_window() -> Optional[Any]:
     """Retrieve or discover active Host MainWindow."""
     global _host_window
@@ -155,7 +178,8 @@ def get_full_state_snapshot() -> Dict[str, Any]:
         return state
 
     state["ready"] = True
-    state["bot_status"] = getattr(w, "_last_worker_status", "Ready")
+    state["window_title"] = w.windowTitle() if hasattr(w, "windowTitle") else "ClashBot AI Pro v2.1.5 | Android Device (16384)"
+    state["bot_status"] = getattr(w, "_last_worker_status", "Idle")
     state["active_page"] = ""
     state["active_page_idx"] = 0
     state["settings_drawer_expanded"] = getattr(w, "settings_drawer_expanded", False)
@@ -638,13 +662,15 @@ def _handle_client_connection(client_sock: socket.socket, addr: tuple) -> None:
     try:
         snap = get_full_state_snapshot()
         client_sock.sendall(_json_serialize(snap))
+        # Request the client to start streaming local frames to us
+        client_sock.sendall(_json_serialize({"type": "start_stream", "fps": 4.0, "quality": 75}))
     except Exception as e:
-        print(f"[ui2client] Error sending initial snapshot: {e}")
+        print(f"[ui2client] Error sending initial snapshot/stream request: {e}")
 
     buffer = ""
     try:
         while _server_running:
-            data = client_sock.recv(4096)
+            data = client_sock.recv(32768)
             if not data:
                 break
             buffer += data.decode("utf-8", errors="replace")
@@ -654,14 +680,20 @@ def _handle_client_connection(client_sock: socket.socket, addr: tuple) -> None:
                 if not line:
                     continue
                 try:
-
-
                     msg = json.loads(line)
                     msg_type = msg.get("type", "action")
                     if msg_type == "ping":
                         client_sock.sendall(_json_serialize({"type": "pong"}))
                     elif msg_type == "get_state":
                         client_sock.sendall(_json_serialize(get_full_state_snapshot()))
+                    elif msg_type == "device_frame":
+                        global _latest_client_frame
+                        data_b64 = msg.get("data", "")
+                        if data_b64:
+                            try:
+                                _latest_client_frame = base64.b64decode(data_b64)
+                            except Exception:
+                                pass
                     else:
                         # Action command from Remote Client -> dispatch to Qt GUI
                         _dispatch_to_gui(msg)

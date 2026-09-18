@@ -423,81 +423,158 @@ QGroupBox::title {{
     padding: 0 8px;
 }}
 
-/* ---------------- Control Buttons (Start / Pause / Stop) ---------------- */
+/* ---------------- Control Buttons (Start / Pause / Stop - Exact Circular Outline) ---------------- */
 
 #StartBtn {{
-    background-color: #22C55E;
-    color: white;
+    border: 2px solid #10B981;
+    border-radius: 18px;
+    background: transparent;
+    color: #10B981;
     text-align: center;
-    font-size: 22px;
+    font-size: 15px;
     font-weight: bold;
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.35);
-    min-height: 42px;
-    min-width: 90px;
-}}
-
-#StartBtn:hover {{ background-color: #16A34A; }}
-#StartBtn:pressed {{ background-color: #15803D; }}
-
-#PauseBtn {{
-    background-color: #FACC15;
-    color: #1A202C;
-    text-align: center;
-    font-size: 20px;
-    font-weight: bold;
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.35);
-    min-height: 42px;
-    min-width: 80px;
-}}
-
-#PauseBtn:hover {{ background-color: #EAB308; }}
-#PauseBtn:pressed {{ background-color: #CA8A04; }}
-
-#StopBtn {{
-    background-color: #EF4444;
-    color: white;
-    text-align: center;
-    font-size: 22px;
-    font-weight: bold;
-    border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.35);
-    min-height: 42px;
-    min-width: 90px;
-}}
-
-#StopBtn:hover {{ background-color: #DC2626; }}
-#StopBtn:pressed  {{ background-color: #B91C1C; }}
-
-/* ---------------- Settings Drawer ---------------- */
-
-#SettingsDrawer {{
-    background-color: #171A22;
-    border-bottom: 2px solid #8B55F6;
-    border-radius: 0px;
-    padding: 14px 20px;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0px;
     margin: 0px;
 }}
 
-
-
-/* ---------------- Focus Host Button ---------------- */
-
-#FocusHostBtn {{
-    background-color: #4C1D95;
-    color: #EDE9FE;
-    border: 1px solid #6D28D9;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    padding: 4px 12px;
+#StartBtn:hover {{
+    background-color: rgba(16, 185, 129, 0.15);
+    border: 2px solid #34D399;
+    color: #34D399;
 }}
 
-#FocusHostBtn:hover {{
-    background-color: #5B21B6;
-    border-color: #8B5CF6;
-    color: #FFFFFF;
+#StartBtn:pressed {{
+    background-color: rgba(16, 185, 129, 0.30);
+}}
+
+#PauseBtn {{
+    border: 2px solid #F59E0B;
+    border-radius: 18px;
+    background: transparent;
+    color: #F59E0B;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0px;
+    margin: 0px;
+}}
+
+#PauseBtn:hover {{
+    background-color: rgba(245, 158, 11, 0.15);
+    border: 2px solid #FBBF24;
+    color: #FBBF24;
+}}
+
+#PauseBtn:pressed {{
+    background-color: rgba(245, 158, 11, 0.30);
+}}
+
+#StopBtn {{
+    border: 2px solid #EF4444;
+    border-radius: 18px;
+    background: transparent;
+    color: #EF4444;
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    min-width: 36px;
+    max-width: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 0px;
+    margin: 0px;
+}}
+
+#StopBtn:hover {{
+    background-color: rgba(239, 68, 68, 0.15);
+    border: 2px solid #F87171;
+    color: #F87171;
+}}
+
+#StopBtn:pressed  {{
+    background-color: rgba(239, 68, 68, 0.30);
+}}
+
+/* ---------------- Settings Toggle & Drawer ---------------- */
+
+QPushButton#SettingsToggleBtn {{
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    color: #C9CCD6;
+    text-align: left;
+    padding: 7px 14px;
+    margin: 2px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}}
+
+QPushButton#SettingsToggleBtn:hover {{
+    background-color: rgba(148, 163, 184, 0.14);
+    color: #E6EAF2;
+}}
+
+QPushButton#SettingsToggleBtn:checked {{
+    background-color: rgba(139, 85, 246, 0.18);
+    border: 1px solid rgba(139, 85, 246, 0.45);
+    border-left: 3px solid #8B55F6;
+    color: #F4F7FB;
+}}
+
+#SettingsDrawer {{
+    background-color: #1D212A;
+    border: 2px solid #2F3546;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 0px;
+}}
+
+#SettingsDrawer QLabel {{
+    color: #C9CCD6;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 0px;
+    margin: 0px;
+}}
+
+#SettingsDrawer QComboBox,
+#SettingsDrawer QLineEdit {{
+    background-color: #1B1F2A;
+    border: 1px solid #2A2F3B;
+    border-radius: 6px;
+    color: #E6E6E6;
+    min-height: 26px;
+    padding-left: 6px;
+    font-size: 12px;
+}}
+
+#RestartAdbBtn {{
+    min-height: 34px;
+    font-size: 13px;
+    font-weight: 600;
+    background-color: #242834;
+    border: 1px solid #181B24;
+    border-radius: 6px;
+    color: #E6E6E6;
+    text-align: center;
+}}
+
+#RestartAdbBtn:hover {{
+    background-color: #2D3240;
+    border: 1px solid #222737;
+}}
+
+#RestartAdbBtn:pressed {{
+    background-color: #1F2330;
 }}
 
 /* Tooltips */
@@ -510,3 +587,5 @@ QToolTip {{
 }}
 """
     return css
+
+

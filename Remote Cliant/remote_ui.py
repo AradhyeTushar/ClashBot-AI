@@ -15,7 +15,7 @@ import sys
 import json
 from typing import Optional, Dict, Any, List
 
-from PySide6.QtCore import Qt, QPoint, QSize, QTimer, Signal
+from PySide6.QtCore import Qt, QPoint, QSize, QTimer, Signal, QLocale
 from PySide6.QtGui import QIcon, QPixmap, QFont, QColor
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QFrame, QVBoxLayout, QHBoxLayout,
@@ -37,71 +37,36 @@ def get_asset(filename: str) -> str:
 
 
 class TitleBar(QFrame):
-    """Modern Frameless Custom TitleBar with Server Connection Badge & Controls."""
+    """Modern Frameless Custom TitleBar matching ClashBot AI Pro Host exactly."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("TitleBar")
-        self.setFixedHeight(42)
+        self.setFixedHeight(38)
         self._parent = parent
         self._drag_pos = None
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(12, 0, 12, 0)
-        layout.setSpacing(10)
+        layout.setContentsMargins(12, 0, 6, 0)
+        layout.setSpacing(8)
 
-        # App Icon
+        # App Icon (shield)
         self.icon_lbl = QLabel()
         icon_path = get_asset("icon.png")
         if os.path.exists(icon_path):
-            pix = QPixmap(icon_path).scaled(22, 22, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            pix = QPixmap(icon_path).scaled(18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             self.icon_lbl.setPixmap(pix)
         layout.addWidget(self.icon_lbl)
 
-        # App Title
-        self.title_lbl = QLabel("ClashBot AI Pro - Remote Client")
+        # App Title - exact Host format: ClashBot AI Pro v2.1.5 | Android Device (16384)
+        self.title_lbl = QLabel("ClashBot AI Pro v2.1.5 | Android Device (16384)")
         self.title_lbl.setObjectName("TitleBarTitle")
         layout.addWidget(self.title_lbl)
 
-        # Connection Status Badge
-        self.conn_badge = QLabel("• Connecting to Server...")
-        self.conn_badge.setObjectName("RemoteConnBadge")
-        self.conn_badge.setStyleSheet(
-            "color: #F59E0B; font-weight: bold; font-size: 11px; margin-left: 10px;"
-        )
-        layout.addWidget(self.conn_badge)
-
         layout.addStretch()
 
-        # Server Host Info
-        self.server_info_lbl = QLabel("")
-        self.server_info_lbl.setStyleSheet("color: #64748B; font-size: 11px; font-weight: 500;")
-        layout.addWidget(self.server_info_lbl)
-
-        # Settings Toggle Button
-        self.settings_btn = QPushButton("⚙ Settings ▾")
-        self.settings_btn.setObjectName("SettingsToggleBtn")
-        self.settings_btn.setCursor(Qt.PointingHandCursor)
-        self.settings_btn.setFixedHeight(28)
-        self.settings_btn.setStyleSheet("""
-            QPushButton#SettingsToggleBtn {
-                background-color: rgba(139, 85, 246, 0.18);
-                color: #DDD6FE;
-                border: 1px solid #8B55F6;
-                border-radius: 5px;
-                padding: 2px 10px;
-                font-size: 11px;
-                font-weight: 600;
-            }
-            QPushButton#SettingsToggleBtn:hover {
-                background-color: rgba(139, 85, 246, 0.40);
-                color: #FFFFFF;
-            }
-        """)
-        layout.addWidget(self.settings_btn)
-
         # Minimize Button
-        self.min_btn = QPushButton("🗕")
+        self.min_btn = QPushButton("–")
         self.min_btn.setObjectName("TitleMinBtn")
         self.min_btn.setCursor(Qt.PointingHandCursor)
         self.min_btn.clicked.connect(self._on_minimize)
@@ -113,6 +78,9 @@ class TitleBar(QFrame):
         self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(self._on_close)
         layout.addWidget(self.close_btn)
+
+    def set_title(self, text: str):
+        self.title_lbl.setText(text)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -151,9 +119,9 @@ class RemoteMainWindow(QMainWindow):
         # Configure Frameless Window with Rounded Corners
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
         self.setAttribute(Qt.WA_TranslucentBackground, False)
-        self.resize(1020, 680)
+        self.resize(1000, 650)
         self.setMinimumSize(960, 620)
-        self.setWindowTitle("ClashBot AI Pro - Remote Client")
+        self.setWindowTitle("ClashBot AI Pro v2.1.5 | Android Device (16384)")
 
         # Set App Icon
         icon_path = get_asset("icon.ico")
@@ -187,314 +155,312 @@ class RemoteMainWindow(QMainWindow):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
-        # 1. Custom TitleBar
+        # 1. Custom TitleBar (shield + exact host title + min/close buttons)
         self.title_bar = TitleBar(self)
-        self.title_bar.settings_btn.clicked.connect(self._toggle_settings_drawer)
         self.main_layout.addWidget(self.title_bar)
 
-        # 2. Middle Body: NavPanel + PageStack + SettingsDrawer Overlay
+        # 2. Middle Body: NavPanel + PageStack (exact 1:1 host layout)
         self.body_widget = QWidget()
         self.body_layout = QHBoxLayout(self.body_widget)
         self.body_layout.setContentsMargins(0, 0, 0, 0)
         self.body_layout.setSpacing(0)
 
-        # Sidebar NavPanel
+        # Sidebar NavPanel (220px width, 11 icon buttons, Settings button at bottom)
         self._build_nav_panel()
         self.body_layout.addWidget(self.nav_panel)
 
-        # Central Area (Pages Stack + Settings Drawer)
-        self.center_area = QWidget()
-        self.center_layout = QVBoxLayout(self.center_area)
-        self.center_layout.setContentsMargins(0, 0, 0, 0)
-        self.center_layout.setSpacing(0)
-
-        # Settings Drawer (Collapsible)
-        self._build_settings_drawer()
-        self.center_layout.addWidget(self.settings_drawer)
-        self.settings_drawer.hide()
-
-        # Page Stack
+        # Page Stack (Takes full central area)
         self.stack = QStackedWidget()
         self.stack.setObjectName("PageStack")
         self._build_all_pages()
-        self.center_layout.addWidget(self.stack)
+        self.body_layout.addWidget(self.stack, stretch=1)
 
-        self.body_layout.addWidget(self.center_area)
         self.main_layout.addWidget(self.body_widget, stretch=1)
 
-        # 3. Bottom Control Bar
+        # Floating Settings Drawer (Parented to body_widget, floats over NavPanel above Settings button)
+        self._build_settings_drawer()
+
+        # 3. Bottom Control Bar (Circular Start/Pause/Stop, Lifetime license, Idle / GLOBAL MODE)
         self._build_bottom_bar()
         self.main_layout.addWidget(self.bottom_bar)
 
     def _build_nav_panel(self):
-        """Build left sidebar with 11 navigation buttons."""
+        """Build left sidebar with exact 220px width, 11 nav buttons with 15x15 icons, and Settings at bottom."""
         self.nav_panel = QFrame()
         self.nav_panel.setObjectName("NavPanel")
-        self.nav_panel.setFixedWidth(190)
+        self.nav_panel.setFixedWidth(220)
 
         layout = QVBoxLayout(self.nav_panel)
-        layout.setContentsMargins(8, 14, 8, 14)
-        layout.setSpacing(4)
+        layout.setContentsMargins(0, 8, 0, 8)
+        layout.setSpacing(3)
 
-        # Logo / Header Brand
-        logo_path = get_asset("logo.png")
-        if os.path.exists(logo_path):
-            logo_lbl = QLabel()
-            pix = QPixmap(logo_path).scaled(160, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            logo_lbl.setPixmap(pix)
-            logo_lbl.setAlignment(Qt.AlignCenter)
-            layout.addWidget(logo_lbl)
-            layout.addSpacing(10)
+        nav_icons_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "nav_icons")
 
-        # Nav Buttons Group
+        self.NAV_ITEMS = [
+            ("General", "General.png"),
+            ("Attack Army", "Attack_Army.png"),
+            ("Multi Village", "Multi_Village.png"),
+            ("Builder Base", "Builder_Base.png"),
+            ("Clan Capital", "Clan_Capital.png"),
+            ("Upgrades/Research", "Upgrades_Research.png"),
+            ("XP Farming", "XP_Farming.png"),
+            ("Extra Modes", "Extra_Modes.png"),
+            ("Bot Runtime", "Bot_Runtime.png"),
+            ("Statistics", "Statistics.png"),
+            ("Log", "Log.png"),
+        ]
+        self.PAGE_NAMES = [name for name, _ in self.NAV_ITEMS]
+
         self.nav_btn_group = QButtonGroup(self)
         self.nav_btn_group.setExclusive(True)
         self.nav_buttons: Dict[str, QPushButton] = {}
 
-        self.PAGE_NAMES = [
-            "General", "Attack Army", "Multi Village", "Builder Base",
-            "Clan Capital", "Upgrades/Research", "XP Farming", "Extra Modes",
-            "Bot Runtime", "Statistics", "Log"
-        ]
-
-        for idx, name in enumerate(self.PAGE_NAMES):
-            btn = QPushButton(f"  {name}")
+        for idx, (page_name, icon_file) in enumerate(self.NAV_ITEMS):
+            btn = QPushButton(page_name)
             btn.setProperty("nav_button", "true")
             btn.setCheckable(True)
             btn.setCursor(Qt.PointingHandCursor)
-            btn.setFixedHeight(34)
-            btn.clicked.connect(lambda chk, n=name: self._on_nav_btn_clicked(n))
+            btn.setFixedHeight(38)
+            icon_path = os.path.join(nav_icons_dir, icon_file)
+            if os.path.exists(icon_path):
+                btn.setIcon(QIcon(icon_path))
+                btn.setIconSize(QSize(15, 15))
+            btn.clicked.connect(lambda chk, n=page_name: self._on_nav_btn_clicked(n))
             layout.addWidget(btn)
             self.nav_btn_group.addButton(btn, idx)
-            self.nav_buttons[name] = btn
+            self.nav_buttons[page_name] = btn
 
         layout.addStretch()
+
+        # Settings Toggle Button at bottom of sidebar (exact Host layout)
+        self.settings_toggle_btn = QPushButton("Settings ▸")
+        self.settings_toggle_btn.setObjectName("SettingsToggleBtn")
+        self.settings_toggle_btn.setFixedHeight(38)
+        self.settings_toggle_btn.setCheckable(True)
+        self.settings_toggle_btn.setCursor(Qt.PointingHandCursor)
+        settings_icon = os.path.join(nav_icons_dir, "Settings__.png")
+        if os.path.exists(settings_icon):
+            self.settings_toggle_btn.setIcon(QIcon(settings_icon))
+            self.settings_toggle_btn.setIconSize(QSize(15, 15))
+        self.settings_toggle_btn.clicked.connect(self._toggle_settings_drawer)
+        layout.addWidget(self.settings_toggle_btn)
 
         # Set first page active
         if self.PAGE_NAMES:
             self.nav_buttons[self.PAGE_NAMES[0]].setChecked(True)
 
     def _build_settings_drawer(self):
-        """Collapsible Settings Drawer for Emulator & Server IP/Port configuration."""
-        self.settings_drawer = QFrame()
+        """Floating Settings Drawer positioned directly above Settings button (exact Host design)."""
+        self.settings_drawer = QFrame(self.body_widget)
         self.settings_drawer.setObjectName("SettingsDrawer")
-        self.settings_drawer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.settings_drawer.setStyleSheet("""
-            QFrame#SettingsDrawer {
-                background-color: #171A22;
-                border-bottom: 2px solid #8B55F6;
-                padding: 12px;
-            }
-        """)
+        self.settings_drawer.setFixedWidth(236)
 
+        layout = QVBoxLayout(self.settings_drawer)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(6)
 
-        layout = QGridLayout(self.settings_drawer)
-        layout.setColumnStretch(1, 2)
-        layout.setColumnStretch(3, 2)
-
-        # Title
-        title = QLabel("⚙ Settings & Server Connection")
-        title.setStyleSheet("color: #DDD6FE; font-weight: bold; font-size: 13px; margin-bottom: 4px;")
-        layout.addWidget(title, 0, 0, 1, 4)
-
-        # Row 1: Emulator Selection
-        lbl1 = QLabel("Emulator:")
-        lbl1.setFixedWidth(80)
+        # Emulator Selection
+        lbl_emu = QLabel("Emulator")
         self.emulator_select = QComboBox()
         self.emulator_select.setObjectName("emulator_select")
-        self.emulator_select.addItems(["MuMu Player", "LDPlayer", "BlueStacks", "NoxPlayer", "MEmu"])
+        self.emulator_select.addItems(["MuMu", "BlueStacks", "LDPlayer", "Other"])
         self.emulator_select.setCursor(Qt.PointingHandCursor)
         self.emulator_select.currentTextChanged.connect(
             lambda t: self._on_cmb_changed("emulator_select", t)
         )
-        layout.addWidget(lbl1, 1, 0)
-        layout.addWidget(self.emulator_select, 1, 1)
+        layout.addWidget(lbl_emu)
+        layout.addWidget(self.emulator_select)
 
-        lbl2 = QLabel("Instance:")
-        lbl2.setFixedWidth(70)
+        # Instance Selection
+        lbl_inst = QLabel("Instance")
         self.emulator_instance_select = QComboBox()
         self.emulator_instance_select.setObjectName("emulator_instance_select")
-        self.emulator_instance_select.addItems(["0 (Default)", "1", "2", "3"])
+        self.emulator_instance_select.addItems(["Android Device-1 (16416)", "Android Device (16384)"])
         self.emulator_instance_select.setCursor(Qt.PointingHandCursor)
         self.emulator_instance_select.currentTextChanged.connect(
             lambda t: self._on_cmb_changed("emulator_instance_select", t)
         )
-        layout.addWidget(lbl2, 1, 2)
-        layout.addWidget(self.emulator_instance_select, 1, 3)
+        layout.addWidget(lbl_inst)
+        layout.addWidget(self.emulator_instance_select)
 
-        # Row 2: Server Host & Port
-        lbl3 = QLabel("Server Host:")
-        lbl3.setFixedWidth(80)
-        self.server_ip_input = QLineEdit("127.0.0.1")
-        self.server_ip_input.setPlaceholderText("IP or Domain (e.g. 192.168.1.100)")
-        layout.addWidget(lbl3, 2, 0)
-        layout.addWidget(self.server_ip_input, 2, 1)
+        # Install Path
+        lbl_path = QLabel("Install Path")
+        layout.addWidget(lbl_path)
+        path_layout = QHBoxLayout()
+        path_layout.setSpacing(6)
+        self.install_path_input = QLineEdit()
+        self.install_path_input.setPlaceholderText(r"e.g. C:\Program Files\Netease\MuMuPlayer...")
+        path_layout.addWidget(self.install_path_input)
+        browse_btn = QToolButton()
+        browse_btn.setText("📁")
+        browse_btn.setFixedSize(28, 28)
+        browse_btn.setCursor(Qt.PointingHandCursor)
+        browse_btn.clicked.connect(self._on_browse_path)
+        path_layout.addWidget(browse_btn)
+        layout.addLayout(path_layout)
 
-        lbl4 = QLabel("Port:")
-        lbl4.setFixedWidth(70)
-        self.server_port_input = QLineEdit("29170")
-        layout.addWidget(lbl4, 2, 2)
-        layout.addWidget(self.server_port_input, 2, 3)
-
-        # Row 3: Action Buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(10)
+        # Restart ADB Button
         self.restart_adb_btn = QPushButton("Restart ADB")
         self.restart_adb_btn.setObjectName("RestartAdbBtn")
         self.restart_adb_btn.setCursor(Qt.PointingHandCursor)
         self.restart_adb_btn.clicked.connect(lambda: self._on_btn_clicked("restart_adb"))
-        btn_layout.addWidget(self.restart_adb_btn)
+        layout.addWidget(self.restart_adb_btn)
 
-        self.reconnect_server_btn = QPushButton("Reconnect Server")
+        # Server Connection Section (cleanly integrated for Remote Client)
+        lbl_srv = QLabel("Server Connection")
+        lbl_srv.setStyleSheet("color: #A78BFA; font-size: 11px; font-weight: bold; margin-top: 4px;")
+        layout.addWidget(lbl_srv)
+
+        srv_row = QHBoxLayout()
+        srv_row.setSpacing(4)
+        self.server_ip_input = QLineEdit("127.0.0.1")
+        self.server_ip_input.setPlaceholderText("Host IP")
+        self.server_port_input = QLineEdit("29170")
+        self.server_port_input.setFixedWidth(52)
+        self.reconnect_server_btn = QPushButton("Connect")
         self.reconnect_server_btn.setCursor(Qt.PointingHandCursor)
+        self.reconnect_server_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #8B55F6;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+                font-weight: bold;
+                min-height: 26px;
+            }
+            QPushButton:hover { background-color: #9B6CFA; }
+        """)
         self.reconnect_server_btn.clicked.connect(self._on_reconnect_clicked)
-        btn_layout.addWidget(self.reconnect_server_btn)
+        srv_row.addWidget(self.server_ip_input)
+        srv_row.addWidget(self.server_port_input)
+        srv_row.addWidget(self.reconnect_server_btn)
+        layout.addLayout(srv_row)
 
-        self.close_drawer_btn = QPushButton("Close Settings")
-        self.close_drawer_btn.setCursor(Qt.PointingHandCursor)
-        self.close_drawer_btn.clicked.connect(self._toggle_settings_drawer)
-        btn_layout.addWidget(self.close_drawer_btn)
-        btn_layout.addStretch()
-
-
-        layout.addLayout(btn_layout, 3, 0, 1, 4)
-
-    def _build_bottom_bar(self):
-        """Construct bottom control bar with circular Start/Pause/Stop and telemetry."""
-        self.bottom_bar = QFrame()
-        self.bottom_bar.setObjectName("BottomBar")
-        self.bottom_bar.setFixedHeight(64)
-
-        layout = QHBoxLayout(self.bottom_bar)
-        layout.setContentsMargins(16, 8, 16, 8)
-        layout.setSpacing(12)
-
-        # Profile Selector
-        lbl_p = QLabel("Profile:")
-        lbl_p.setStyleSheet("font-weight: bold; color: #94A3B8;")
-        layout.addWidget(lbl_p)
-
-        self.start_profile = QComboBox()
-        self.start_profile.setObjectName("start_profile")
-        self.start_profile.setFixedWidth(160)
-        self.start_profile.addItems(["Default Profile", "Account 1", "Account 2"])
-        self.start_profile.currentTextChanged.connect(
-            lambda t: self._on_cmb_changed("start_profile", t)
-        )
-        layout.addWidget(self.start_profile)
-
-        layout.addSpacing(10)
-
-        # Circular Controls: Start, Pause, Stop
-        self.start_btn = QPushButton("▶")
-        self.start_btn.setObjectName("StartBtn")
-        self.start_btn.setToolTip("Start ClashBot AI Automation")
-        self.start_btn.setCursor(Qt.PointingHandCursor)
-        self.start_btn.setFixedSize(44, 44)
-        self.start_btn.setStyleSheet("""
-            QPushButton#StartBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #10B981, stop:1 #059669);
-                color: #FFFFFF;
-                border-radius: 22px;
-                font-size: 18px;
-                font-weight: bold;
-                border: 2px solid #34D399;
-            }
-            QPushButton#StartBtn:hover {
-                background: #059669;
-                border: 2px solid #6EE7B7;
-            }
-        """)
-        self.start_btn.clicked.connect(lambda: self._on_btn_clicked("start"))
-        layout.addWidget(self.start_btn)
-
-        self.pause_btn = QPushButton("⏸")
-        self.pause_btn.setObjectName("PauseBtn")
-        self.pause_btn.setToolTip("Pause Bot")
-        self.pause_btn.setCursor(Qt.PointingHandCursor)
-        self.pause_btn.setFixedSize(44, 44)
-        self.pause_btn.setStyleSheet("""
-            QPushButton#PauseBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #F59E0B, stop:1 #D97706);
-                color: #FFFFFF;
-                border-radius: 22px;
-                font-size: 16px;
-                font-weight: bold;
-                border: 2px solid #FBBF24;
-            }
-            QPushButton#PauseBtn:hover {
-                background: #D97706;
-                border: 2px solid #FCD34D;
-            }
-        """)
-        self.pause_btn.clicked.connect(lambda: self._on_btn_clicked("pause"))
-        layout.addWidget(self.pause_btn)
-
-        self.stop_btn = QPushButton("⏹")
-        self.stop_btn.setObjectName("StopBtn")
-        self.stop_btn.setToolTip("Stop Bot")
-        self.stop_btn.setCursor(Qt.PointingHandCursor)
-        self.stop_btn.setFixedSize(44, 44)
-        self.stop_btn.setStyleSheet("""
-            QPushButton#StopBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #EF4444, stop:1 #DC2626);
-                color: #FFFFFF;
-                border-radius: 22px;
-                font-size: 16px;
-                font-weight: bold;
-                border: 2px solid #F87171;
-            }
-            QPushButton#StopBtn:hover {
-                background: #DC2626;
-                border: 2px solid #FCA5A5;
-            }
-        """)
-        self.stop_btn.clicked.connect(lambda: self._on_btn_clicked("stop"))
-        layout.addWidget(self.stop_btn)
-
-        layout.addSpacing(16)
-
-        # Bot Status & Worker Telemetry Labels
-        status_box = QVBoxLayout()
-        status_box.setSpacing(2)
-
-        self.status = QLabel("Ready")
-        self.status.setObjectName("status")
-        self.status.setStyleSheet("font-weight: bold; color: #F1F5F9; font-size: 13px;")
-        status_box.addWidget(self.status)
-
-        self.mode_label = QLabel("Idle • Waiting to Start")
-        self.mode_label.setObjectName("mode_label")
-        self.mode_label.setStyleSheet("color: #94A3B8; font-size: 11px;")
-        status_box.addWidget(self.mode_label)
-
-        layout.addLayout(status_box)
-        layout.addStretch()
-
-        # Worker Telemetry Badges (ADB + Emulator)
+        # Telemetry Badges
+        badge_row = QHBoxLayout()
+        badge_row.setSpacing(6)
         self.adb_badge = QLabel("ADB: Waiting")
         self.adb_badge.setStyleSheet("""
             background-color: rgba(30, 41, 59, 0.8);
             color: #94A3B8;
             border: 1px solid #334155;
             border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 3px 6px;
+            font-size: 10px;
             font-weight: bold;
         """)
-        layout.addWidget(self.adb_badge)
+        badge_row.addWidget(self.adb_badge)
 
-        self.emu_badge = QLabel("Emulator: Waiting")
+        self.emu_badge = QLabel("Emu: Waiting")
         self.emu_badge.setStyleSheet("""
             background-color: rgba(30, 41, 59, 0.8);
             color: #94A3B8;
             border: 1px solid #334155;
             border-radius: 4px;
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 3px 6px;
+            font-size: 10px;
             font-weight: bold;
         """)
-        layout.addWidget(self.emu_badge)
+        badge_row.addWidget(self.emu_badge)
+        layout.addLayout(badge_row)
+
+        self.settings_drawer.hide()
+
+    def _position_settings_drawer(self):
+        """Position drawer floating precisely above Settings button over NavPanel."""
+        d_w = 236
+        d_h = 335
+        btn_y = self.settings_toggle_btn.geometry().y()
+        if btn_y <= 50:
+            btn_y = max(300, self.body_widget.height() - 46)
+        x = 8
+        y = max(8, btn_y - d_h - 4)
+        self.settings_drawer.setGeometry(x, y, d_w, d_h)
+
+    def _toggle_settings_drawer(self):
+        """Expand or collapse floating settings drawer and update button chevron."""
+        self.settings_drawer_expanded = not self.settings_drawer_expanded
+        if self.settings_drawer_expanded:
+            self._position_settings_drawer()
+            self.settings_drawer.show()
+            self.settings_drawer.raise_()
+            self.settings_toggle_btn.setText("Settings ▾")
+            self.settings_toggle_btn.setChecked(True)
+        else:
+            self.settings_drawer.hide()
+            self.settings_toggle_btn.setText("Settings ▸")
+            self.settings_toggle_btn.setChecked(False)
+
+    def _on_browse_path(self):
+        """Browse for emulator executable path."""
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getOpenFileName(self, "Select Emulator Executable", "", "Executables (*.exe);;All Files (*)")
+        if path:
+            self.install_path_input.setText(path)
+
+    def resizeEvent(self, event):
+        """Keep floating drawer correctly aligned when window resizes."""
+        super().resizeEvent(event)
+        if getattr(self, "settings_drawer_expanded", False):
+            self._position_settings_drawer()
+
+    def _build_bottom_bar(self):
+        """Construct bottom control bar with 3 circular outline buttons, Lifetime license, and Idle / GLOBAL MODE."""
+        self.bottom_bar = QFrame()
+        self.bottom_bar.setObjectName("BottomBar")
+        self.bottom_bar.setFixedHeight(56)
+
+        layout = QHBoxLayout(self.bottom_bar)
+        layout.setContentsMargins(18, 0, 18, 0)
+        layout.setSpacing(10)
+
+        # 1. Start Button (Circular green outline)
+        self.start_btn = QPushButton("▶")
+        self.start_btn.setObjectName("StartBtn")
+        self.start_btn.setToolTip("Start ClashBot AI Automation")
+        self.start_btn.setCursor(Qt.PointingHandCursor)
+        self.start_btn.setFixedSize(36, 36)
+        self.start_btn.clicked.connect(lambda: self._on_btn_clicked("start"))
+        layout.addWidget(self.start_btn)
+
+        # 2. Pause Button (Circular amber outline)
+        self.pause_btn = QPushButton("⏸")
+        self.pause_btn.setObjectName("PauseBtn")
+        self.pause_btn.setToolTip("Pause Bot")
+        self.pause_btn.setCursor(Qt.PointingHandCursor)
+        self.pause_btn.setFixedSize(36, 36)
+        self.pause_btn.clicked.connect(lambda: self._on_btn_clicked("pause"))
+        layout.addWidget(self.pause_btn)
+
+        # 3. Stop Button (Circular red outline)
+        self.stop_btn = QPushButton("⏹")
+        self.stop_btn.setObjectName("StopBtn")
+        self.stop_btn.setToolTip("Stop Bot")
+        self.stop_btn.setCursor(Qt.PointingHandCursor)
+        self.stop_btn.setFixedSize(36, 36)
+        self.stop_btn.clicked.connect(lambda: self._on_btn_clicked("stop"))
+        layout.addWidget(self.stop_btn)
+
+        # 4. License text next to buttons (exact Host style)
+        self.license_lbl = QLabel("License Expires: Lifetime")
+        self.license_lbl.setStyleSheet("color: #10B981; font-weight: bold; font-size: 13px; margin-left: 10px;")
+        layout.addWidget(self.license_lbl)
+
+        layout.addStretch()
+
+        # 5. Status text on the right (exact Host style)
+        self.status = QLabel("Idle")
+        self.status.setObjectName("status")
+        self.status.setStyleSheet("color: #94A3B8; font-size: 13px; font-weight: 500;")
+        layout.addWidget(self.status)
+
+        # 6. GLOBAL MODE label on the right (exact Host style)
+        self.mode_label = QLabel("GLOBAL MODE")
+        self.mode_label.setObjectName("mode_label")
+        self.mode_label.setStyleSheet("color: #F59E0B; font-size: 13px; font-weight: bold; margin-left: 12px;")
+        layout.addWidget(self.mode_label)
 
     # =========================================================================
     # BUILD ALL 11 PAGES (EXACT PARITY WITH HOST UI)
@@ -529,94 +495,137 @@ class RemoteMainWindow(QMainWindow):
         scroll.setWidget(widget)
         return scroll
 
-    # --- 1. General Page ---
+    # --- 1. General Page (Exact 1:1 Parity with Host UI) ---
     def _create_general_page(self) -> QWidget:
         container = QWidget()
         layout = QVBoxLayout(container)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(14)
+        layout.setContentsMargins(18, 14, 18, 14)
+        layout.setSpacing(10)
 
         # Farming Enabled
         self.farming_enabled = self._create_checkbox("Enable Farming", "farming_enabled", True)
+        self.farming_enabled.setStyleSheet("font-weight: 500; font-size: 14px; color: #E6EAF2;")
         layout.addWidget(self.farming_enabled)
 
         # Group 1: Wall Upgrades
         gb_walls = QGroupBox("Wall Upgrades")
         gbl_walls = QHBoxLayout(gb_walls)
+        gbl_walls.setContentsMargins(14, 16, 14, 12)
+        gbl_walls.setSpacing(12)
         self.upgrade_walls = self._create_checkbox("Upgrade Walls", "upgrade_walls", False)
         gbl_walls.addWidget(self.upgrade_walls)
 
-        lbl_wall_stop = QLabel("Stop At Level:")
+        lbl_wall_stop = QLabel("Stop walls at lvl:")
+        lbl_wall_stop.setStyleSheet("color: #C9CCD6; font-size: 13px;")
         gbl_walls.addWidget(lbl_wall_stop)
+
         self.wall_stop_level = self._create_combobox(
-            "wall_stop_level", [str(i) for i in range(1, 20)], "15"
+            "wall_stop_level", [str(i) for i in range(1, 20)], "18"
         )
+        self.wall_stop_level.setFixedWidth(200)
         gbl_walls.addWidget(self.wall_stop_level)
-        gbl_walls.addStretch()
         layout.addWidget(gb_walls)
 
         # Group 2: Attack Filter
         gb_filter = QGroupBox("Attack Filter")
         gbl_filter = QGridLayout(gb_filter)
-        gbl_filter.addWidget(QLabel("Min Gold:"), 0, 0)
-        self.attack_gold = self._create_spinbox("attack_gold", 0, 50000000, 750000)
-        gbl_filter.addWidget(self.attack_gold, 0, 1)
+        gbl_filter.setContentsMargins(14, 16, 14, 12)
+        gbl_filter.setVerticalSpacing(10)
+        gbl_filter.setHorizontalSpacing(14)
 
-        gbl_filter.addWidget(QLabel("Min Elixir:"), 0, 2)
+        lbl_gold = QLabel("Min Gold")
+        lbl_gold.setStyleSheet("color: #C9CCD6; font-size: 13px;")
+        gbl_filter.addWidget(lbl_gold, 0, 0)
+        self.attack_gold = self._create_spinbox("attack_gold", 0, 50000000, 510000)
+        self.attack_gold.setGroupSeparatorShown(True)
+        self.attack_gold.setFixedWidth(300)
+        gbl_filter.addWidget(self.attack_gold, 0, 1, Qt.AlignRight)
+
+        lbl_elixir = QLabel("Min Elixir")
+        lbl_elixir.setStyleSheet("color: #C9CCD6; font-size: 13px;")
+        gbl_filter.addWidget(lbl_elixir, 1, 0)
         self.attack_elixir = self._create_spinbox("attack_elixir", 0, 50000000, 510000)
-        gbl_filter.addWidget(self.attack_elixir, 0, 3)
+        self.attack_elixir.setGroupSeparatorShown(True)
+        self.attack_elixir.setFixedWidth(300)
+        gbl_filter.addWidget(self.attack_elixir, 1, 1, Qt.AlignRight)
 
-        gbl_filter.addWidget(QLabel("Min Dark:"), 1, 0)
+        lbl_dark = QLabel("Min Dark")
+        lbl_dark.setStyleSheet("color: #C9CCD6; font-size: 13px;")
+        gbl_filter.addWidget(lbl_dark, 2, 0)
         self.attack_dark = self._create_spinbox("attack_dark", 0, 50000, 5000)
-        gbl_filter.addWidget(self.attack_dark, 1, 1)
-
-        self.dead_bases_only = self._create_checkbox("Dead Bases Only", "dead_bases_only", True)
-        gbl_filter.addWidget(self.dead_bases_only, 1, 2, 1, 2)
+        self.attack_dark.setGroupSeparatorShown(False)
+        self.attack_dark.setFixedWidth(300)
+        gbl_filter.addWidget(self.attack_dark, 2, 1, Qt.AlignRight)
         layout.addWidget(gb_filter)
 
         # Group 3: Donations
         gb_don = QGroupBox("Donations")
-        gbl_don = QHBoxLayout(gb_don)
-        self.request_donations = self._create_checkbox("Request Donations", "request_donations", True)
+        gbl_don = QVBoxLayout(gb_don)
+        gbl_don.setContentsMargins(14, 16, 14, 12)
+        gbl_don.setSpacing(8)
+        self.request_donations = self._create_checkbox("Request Donations", "request_donations", False)
         self.wait_cc_troops = self._create_checkbox("Wait 60s for CC", "wait_cc_troops", False)
+        self.wait_cc_troops.setStyleSheet("margin-left: 24px;")
         self.enable_donations = self._create_checkbox("Enable Donating", "enable_donations", False)
         gbl_don.addWidget(self.request_donations)
         gbl_don.addWidget(self.wait_cc_troops)
         gbl_don.addWidget(self.enable_donations)
-        gbl_don.addStretch()
         layout.addWidget(gb_don)
 
         # Group 4: Battle Conditions
         gb_cond = QGroupBox("Battle Conditions")
         gbl_cond = QHBoxLayout(gb_cond)
+        gbl_cond.setContentsMargins(14, 16, 14, 12)
+        gbl_cond.setSpacing(12)
         self.end_on_stars = self._create_checkbox("End Battle On Stars", "end_on_stars", False)
-        self.target_stars = self._create_combobox("target_stars", ["1", "2", "3"], "1")
         gbl_cond.addWidget(self.end_on_stars)
-        gbl_cond.addWidget(QLabel("Stars:"))
+        lbl_stars = QLabel("Target Stars:")
+        lbl_stars.setStyleSheet("color: #C9CCD6; font-size: 13px;")
+        gbl_cond.addWidget(lbl_stars)
+        self.target_stars = self._create_combobox("target_stars", ["1", "2"], "1")
+        self.target_stars.setFixedWidth(200)
         gbl_cond.addWidget(self.target_stars)
-        gbl_cond.addStretch()
         layout.addWidget(gb_cond)
 
         # Group 5: Extras
         gb_extra = QGroupBox("Extras")
         gbl_extra = QGridLayout(gb_extra)
-        self.collect_collectors = self._create_checkbox("Collect Collectors", "collect_collectors", True)
-        self.start_helpers = self._create_checkbox("Start Helpers", "start_helpers", True)
-        self.collect_cart = self._create_checkbox("Collect Loot Cart", "collect_cart", True)
-        self.clear_tombs = self._create_checkbox("Clear Tombs", "clear_tombs", True)
+        gbl_extra.setContentsMargins(14, 16, 14, 12)
+        gbl_extra.setVerticalSpacing(8)
+        gbl_extra.setHorizontalSpacing(24)
+
+        self.collect_collectors = self._create_checkbox("Collect Collectors", "collect_collectors", False)
+        self.start_helpers = self._create_checkbox("Start Helpers", "start_helpers", False)
+        self.collect_cart = self._create_checkbox("Collect Loot Cart", "collect_cart", False)
+        self.clear_tombs = self._create_checkbox("Clear Tombstones", "clear_tombs", False)
         self.remove_obstacles = self._create_checkbox("Remove Obstacles", "remove_obstacles", False)
-        self.collect_achievements = self._create_checkbox("Collect Achievements", "collect_achievements", True)
-        self.collect_cc_loot = self._create_checkbox("Collect Clan Castle", "collect_cc_loot", True)
+        self.collect_achievements = self._create_checkbox("Collect Achievements", "collect_achievements", False)
+        self.collect_cc_loot = self._create_checkbox("Collect CC Loot", "collect_cc_loot", False)
         self.claim_weekly_deal = self._create_checkbox("Claim Weekly Deal", "claim_weekly_deal", False)
 
-        extras_cbs = [
-            self.collect_collectors, self.start_helpers, self.collect_cart, self.clear_tombs,
-            self.remove_obstacles, self.collect_achievements, self.collect_cc_loot, self.claim_weekly_deal
-        ]
-        for i, cb in enumerate(extras_cbs):
-            gbl_extra.addWidget(cb, i // 4, i % 4)
-        layout.addWidget(gb_extra)
+        # Col 0
+        gbl_extra.addWidget(self.collect_collectors, 0, 0)
+        gbl_extra.addWidget(self.collect_cart, 1, 0)
+        gbl_extra.addWidget(self.remove_obstacles, 2, 0)
+        gbl_extra.addWidget(self.collect_cc_loot, 3, 0)
 
+        # Col 1
+        gbl_extra.addWidget(self.start_helpers, 0, 1)
+        gbl_extra.addWidget(self.clear_tombs, 1, 1)
+        gbl_extra.addWidget(self.collect_achievements, 2, 1)
+
+        weekly_deal_layout = QHBoxLayout()
+        weekly_deal_layout.setContentsMargins(0, 0, 0, 0)
+        weekly_deal_layout.setSpacing(8)
+        weekly_deal_layout.addWidget(self.claim_weekly_deal)
+        self.weekly_deal_type = self._create_combobox(
+            "weekly_deal_type", ["Weekly Deals", "Free Deals", "Starry Ore (Medals)"], "Weekly Deals"
+        )
+        self.weekly_deal_type.setFixedWidth(160)
+        weekly_deal_layout.addWidget(self.weekly_deal_type)
+        gbl_extra.addLayout(weekly_deal_layout, 3, 1)
+
+        layout.addWidget(gb_extra)
         layout.addStretch()
         return self._wrap_scrollable(container)
 
@@ -688,6 +697,12 @@ class RemoteMainWindow(QMainWindow):
         gbl_settings.addWidget(QLabel("Total Village Count:"), 1, 0)
         self.village_count = self._create_spinbox("village_count", 1, 50, 10)
         gbl_settings.addWidget(self.village_count, 1, 1)
+
+        gbl_settings.addWidget(QLabel("Start Profile:"), 1, 2)
+        self.start_profile = self._create_combobox(
+            "start_profile", ["Default Profile"], "Default Profile"
+        )
+        gbl_settings.addWidget(self.start_profile, 1, 3)
         layout.addWidget(gb_settings)
 
         layout.addStretch()
@@ -1175,10 +1190,11 @@ class RemoteMainWindow(QMainWindow):
         return cmb
 
     def _create_spinbox(self, attr_name: str, min_val: int, max_val: int, default: int) -> QSpinBox:
-        """Create a themed QSpinBox with range and automatic sync hook."""
+        """Create a themed QSpinBox with range, US locale for proper thousands separators, and automatic sync hook."""
         sb = QSpinBox()
         sb.setObjectName(attr_name)
         sb.setRange(min_val, max_val)
+        sb.setLocale(QLocale(QLocale.English, QLocale.UnitedStates))
         sb.setValue(default)
         sb.setCursor(Qt.PointingHandCursor)
         sb.valueChanged.connect(lambda val, n=attr_name: self._on_sb_changed(n, val))
@@ -1240,12 +1256,6 @@ class RemoteMainWindow(QMainWindow):
             "target": btn_name
         })
 
-    def _toggle_settings_drawer(self):
-        """Slide/toggle settings drawer."""
-        self.settings_drawer_expanded = not self.settings_drawer_expanded
-        self.settings_drawer.setVisible(self.settings_drawer_expanded)
-        self.title_bar.settings_btn.setText("⚙ Settings ▴" if self.settings_drawer_expanded else "⚙ Settings ▾")
-
     def _on_reconnect_clicked(self):
         """Handle user reconnect request with custom IP/Port."""
         new_host = self.server_ip_input.text().strip()
@@ -1259,7 +1269,7 @@ class RemoteMainWindow(QMainWindow):
             self.bridge.host = new_host
             self.bridge.port = new_port
             self.bridge.start()
-            self._update_server_info(new_host, new_port)
+            self.title_bar.set_title(f"ClashBot AI Pro v2.1.5 | Connecting to {new_host}:{new_port}...")
 
     def _clear_logs(self):
         """Clear local log viewer text."""
@@ -1285,35 +1295,61 @@ class RemoteMainWindow(QMainWindow):
         self.bridge.widget_updated.connect(self._on_widget_updated)
         self.bridge.page_switched.connect(self._on_remote_page_switched)
         self.bridge.log_received.connect(self.append_log)
+        self.bridge.window_title_received.connect(self.title_bar.set_title)
 
     def _on_server_connected(self):
         """Server is online and connection is established."""
-        self.title_bar.conn_badge.setText("🟢 • Connected")
-        self.title_bar.conn_badge.setStyleSheet(
-            "color: #10B981; font-weight: bold; font-size: 11px; margin-left: 10px;"
-        )
-        self._update_server_info(self.bridge.host, self.bridge.port)
+        self.title_bar.set_title("ClashBot AI Pro v2.1.5 | Android Device (16384)")
+        self.status.setText("Idle")
+        if hasattr(self, "reconnect_server_btn") and self.reconnect_server_btn:
+            self.reconnect_server_btn.setText("Connected")
+            self.reconnect_server_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #10B981;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    min-height: 26px;
+                }
+            """)
 
     def _on_server_disconnected(self):
         """Server went offline or connection dropped."""
-        self.title_bar.conn_badge.setText("🔴 • Server Offline (Reconnecting...)")
-        self.title_bar.conn_badge.setStyleSheet(
-            "color: #EF4444; font-weight: bold; font-size: 11px; margin-left: 10px;"
-        )
+        self.title_bar.set_title("ClashBot AI Pro v2.1.5 | Android Device (16384)")
+        self.status.setText("Idle")
         self._update_worker_badge(False, "", False, "")
+        if hasattr(self, "reconnect_server_btn") and self.reconnect_server_btn:
+            self.reconnect_server_btn.setText("Connect")
+            self.reconnect_server_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #8B55F6;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    min-height: 26px;
+                }
+                QPushButton:hover { background-color: #9B6CFA; }
+            """)
 
     def _on_bridge_status(self, msg: str):
-        """Display network status line in mode_label."""
-        if "Connecting" in msg or "Disconnected" in msg:
-            self.mode_label.setText(msg)
-
-    def _update_server_info(self, host: str, port: int):
-        self.title_bar.server_info_lbl.setText(f"Server: {host}:{port}")
+        """Display network status line when disconnected."""
+        pass
 
     def _on_full_state(self, state: Dict[str, Any]):
         """Receive full state snapshot from Server and synchronize all UI controls."""
         self._is_syncing = True
         try:
+            # Window Title from Host
+            host_title = state.get("window_title")
+            if host_title:
+                self.title_bar.set_title(host_title)
+
             # Checkboxes
             cbs = state.get("checkboxes", {})
             for name, val in cbs.items():
@@ -1346,9 +1382,14 @@ class RemoteMainWindow(QMainWindow):
             if page and page in self.pages:
                 self.switch_page(page)
 
-            # Bot Status & Mode
-            bot_st = state.get("bot_status", "Ready")
-            self.status.setText(bot_st)
+            # Bot Status, Mode & License
+            labels = state.get("labels", {})
+            st_text = labels.get("status") or state.get("bot_status") or "Idle"
+            self.status.setText(st_text)
+            if labels.get("key_status"):
+                self.license_lbl.setText(labels["key_status"])
+            if labels.get("mode"):
+                self.mode_label.setText(labels["mode"])
 
             # Logs backlog
             logs = state.get("logs", [])
@@ -1389,65 +1430,66 @@ class RemoteMainWindow(QMainWindow):
             self._is_syncing = False
 
     def _update_worker_badge(self, adb_connected: bool, adb_target: str, emu_running: bool, emu_name: str):
-        """Update top and bottom telemetry badges."""
-        # Bottom Badges
-        if adb_connected:
-            self.adb_badge.setText(f"ADB: Connected ({adb_target or 'Active'})")
-            self.adb_badge.setStyleSheet("""
-                background-color: rgba(16, 185, 129, 0.15);
-                color: #34D399;
-                border: 1px solid #10B981;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-                font-weight: bold;
-            """)
-        else:
-            self.adb_badge.setText("ADB: Disconnected")
-            self.adb_badge.setStyleSheet("""
-                background-color: rgba(239, 68, 68, 0.15);
-                color: #F87171;
-                border: 1px solid #EF4444;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-                font-weight: bold;
-            """)
+        """Update telemetry badges in SettingsDrawer and title bar device text."""
+        if hasattr(self, "adb_badge") and self.adb_badge:
+            if adb_connected:
+                self.adb_badge.setText(f"ADB: Connected ({adb_target or 'Active'})")
+                self.adb_badge.setStyleSheet("""
+                    background-color: rgba(16, 185, 129, 0.15);
+                    color: #34D399;
+                    border: 1px solid #10B981;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
+            else:
+                self.adb_badge.setText("ADB: Disconnected")
+                self.adb_badge.setStyleSheet("""
+                    background-color: rgba(239, 68, 68, 0.15);
+                    color: #F87171;
+                    border: 1px solid #EF4444;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
 
-        if emu_running:
-            self.emu_badge.setText(f"Emulator: {emu_name or 'Active'}")
-            self.emu_badge.setStyleSheet("""
-                background-color: rgba(139, 85, 246, 0.15);
-                color: #A78BFA;
-                border: 1px solid #8B55F6;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-                font-weight: bold;
-            """)
-        else:
-            self.emu_badge.setText("Emulator: Offline")
-            self.emu_badge.setStyleSheet("""
-                background-color: rgba(100, 116, 139, 0.15);
-                color: #94A3B8;
-                border: 1px solid #475569;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-                font-weight: bold;
-            """)
+        if hasattr(self, "emu_badge") and self.emu_badge:
+            if emu_running:
+                self.emu_badge.setText(f"Emulator: {emu_name or 'Active'}")
+                self.emu_badge.setStyleSheet("""
+                    background-color: rgba(139, 85, 246, 0.15);
+                    color: #A78BFA;
+                    border: 1px solid #8B55F6;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
+            else:
+                self.emu_badge.setText("Emulator: Offline")
+                self.emu_badge.setStyleSheet("""
+                    background-color: rgba(100, 116, 139, 0.15);
+                    color: #94A3B8;
+                    border: 1px solid #475569;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: bold;
+                """)
 
-        # Title Bar Badge
+        # Update Title Bar with active emulator/device if connected
         if self.bridge and self.bridge.is_connected():
-            info = f" • Connected"
-            if emu_name and emu_name.strip():
-                info += f" | {emu_name}"
-            elif adb_connected:
-                info += f" | ADB ({adb_target})"
-            self.title_bar.conn_badge.setText(f"🟢{info}")
-            self.title_bar.conn_badge.setStyleSheet(
-                "color: #10B981; font-weight: bold; font-size: 11px; margin-left: 10px;"
-            )
+            if emu_name and emu_name.strip() and "offline" not in emu_name.lower():
+                dev_str = emu_name
+            elif adb_connected and adb_target:
+                dev_str = f"Android Device ({adb_target})"
+            else:
+                dev_str = "Android Device (16384)"
+            self.title_bar.set_title(f"ClashBot AI Pro v2.1.5 | {dev_str}")
+        else:
+            self.title_bar.set_title("ClashBot AI Pro v2.1.5 | Disconnected")
 
 
 if __name__ == "__main__":

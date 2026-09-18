@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  # Example: User 1 - Account 1 Container
+  clashbot_user1_inst1:
+    build: .
+    container_name: clashbot_user1_inst1
+    environment:
+      - CLASHBOT_HOST_IP=0.0.0.0
+    ports:
+      # Expose this container's bridge to a unique host port
+      # Remote Client will connect to VPS_IP:29171
+      - "29171:29170"
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+
+  # Example: User 1 - Account 2 Container
+  clashbot_user1_inst2:
+    build: .
+    container_name: clashbot_user1_inst2
+    environment:
+      - CLASHBOT_HOST_IP=0.0.0.0
+    ports:
+      # Expose this container's bridge to a unique host port
+      # Remote Client will connect to VPS_IP:29172
+      - "29172:29170"
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5
+
+  # Example: User 2 - Account 1 Container
+  clashbot_user2_inst1:
+    build: .
+    container_name: clashbot_user2_inst1
+    environment:
+      - CLASHBOT_HOST_IP=0.0.0.0
+    ports:
+      - "29173:29170"
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 0.5

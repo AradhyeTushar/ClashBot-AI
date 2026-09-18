@@ -12,6 +12,7 @@ Emits Qt signals when state updates or log messages arrive.
 import sys
 import json
 import time
+import base64
 import socket
 import threading
 from typing import Dict, Any, Optional
@@ -35,6 +36,11 @@ class ClientBridge(QObject):
     action_confirmed = Signal(dict)
     status_message = Signal(str)
     host_ready = Signal(bool)
+    window_title_received = Signal(str)
+
+    # Device action & streaming signals
+    device_action_received = Signal(dict)
+    stream_control_received = Signal(bool)
 
     def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, parent=None):
         super().__init__(parent)
@@ -46,6 +52,7 @@ class ClientBridge(QObject):
         self._connected = False
         self._thread: Optional[threading.Thread] = None
         self._send_lock = threading.Lock()
+        self._adb_worker: Optional[Any] = None
 
     def start(self) -> None:
         """Start the background connection worker thread."""
@@ -153,6 +160,34 @@ class ClientBridge(QObject):
             elif msg_type == "action_executed":
                 self.action_confirmed.emit(msg)
 
+            elif msg_type == "window_title":
+                title = msg.get("title", "")
+                if title:
+                    self.window_title_received.emit(title)
+
+            elif msg_type == "device_action":
+                self.device_action_received.emit(msg)
+                if self._adb_worker:
+                    self._adb_worker.execute_action(msg)
+
+            elif msg_type == "start_stream":
+                self.stream_control_received.emit(True)
+                if self._adb_worker:
+                    fps = float(msg.get("fps", 4.0))
+                    quality = int(msg.get("quality", 75))
+                    self._adb_worker.start_streaming(fps=fps, quality=quality)
+
+            elif msg_type == "stop_stream":
+                self.stream_control_received.emit(False)
+                if self._adb_worker:
+                    self._adb_worker.stop_streaming()
+
+            elif msg_type == "request_frame":
+                if self._adb_worker:
+                    frame = self._adb_worker.capture_frame_jpeg()
+                    if frame:
+                        self.send_frame(frame, self._adb_worker._latest_w, self._adb_worker._latest_h)
+
             elif msg_type == "pong":
                 pass
 
@@ -173,6 +208,26 @@ class ClientBridge(QObject):
         except Exception as e:
             print(f"[RemoteBridge] Send error: {e}")
             self._connected = False
+            return False
+
+    def attach_adb_worker(self, worker) -> None:
+        """Attach local AdbWorker for bi-directional device command streaming."""
+        self._adb_worker = worker
+        self._adb_worker.frame_captured.connect(self.send_frame)
+
+    def send_frame(self, jpeg_bytes: bytes, w: int, h: int) -> bool:
+        """Forward local emulator frame to Cloud Host Container."""
+        try:
+            b64_data = base64.b64encode(jpeg_bytes).decode("ascii")
+            return self.send_action({
+                "type": "device_frame",
+                "timestamp": time.time(),
+                "width": w,
+                "height": h,
+                "data": b64_data
+            })
+        except Exception as e:
+            print(f"[RemoteBridge] Frame forwarding error: {e}")
             return False
 
     # Convenience helper methods

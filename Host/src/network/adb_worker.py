@@ -203,10 +203,23 @@ class AdbWorker:
     # -------------------------------------------------------------
     # Device Actions (Taps, Swipes, Inputs)
     # -------------------------------------------------------------
+    def _route_cloud_action(self, action_dict: Dict[str, Any]) -> bool:
+        """Helper to route actions through Cloud Bridge if active."""
+        try:
+            from ui.ui2client import get_latest_client_frame, send_device_action
+            if get_latest_client_frame() is not None:
+                send_device_action(action_dict)
+                return True
+        except ImportError:
+            pass
+        return False
+
     def tap(self, x: int, y: int, jitter: bool = True) -> bool:
         """Execute screen tap with anti-detection humanized jitter."""
         final_x = x + random.randint(-2, 2) if jitter else x
         final_y = y + random.randint(-2, 2) if jitter else y
+        if self._route_cloud_action({"cmd": "tap", "x": final_x, "y": final_y}):
+            return True
         return self.shell(f"input tap {final_x} {final_y}")
 
     def swipe(
@@ -218,14 +231,20 @@ class AdbWorker:
         duration_ms: int = 300
     ) -> bool:
         """Execute screen drag or swipe."""
+        if self._route_cloud_action({"cmd": "swipe", "x1": x1, "y1": y1, "x2": x2, "y2": y2, "duration": duration_ms}):
+            return True
         return self.shell(f"input swipe {x1} {y1} {x2} {y2} {duration_ms}")
 
     def keyevent(self, keycode: int) -> bool:
         """Send Android keyevent (e.g. 4 for Back, 3 for Home, 66 for Enter)."""
+        if self._route_cloud_action({"cmd": "keyevent", "code": keycode}):
+            return True
         return self.shell(f"input keyevent {keycode}")
 
     def text(self, msg: str) -> bool:
         """Send text input to the device with spaces escaped."""
+        if self._route_cloud_action({"cmd": "text", "text": msg}):
+            return True
         safe_msg = msg.replace(" ", "%s")
         return self.shell(f"input text {safe_msg}")
 
@@ -283,6 +302,14 @@ class AdbWorker:
     # -------------------------------------------------------------
     def screencap(self) -> Optional[bytes]:
         """Grab raw screenshot bytes (PNG) directly from the emulator device."""
+        try:
+            from ui.ui2client import get_latest_client_frame
+            cloud_frame = get_latest_client_frame()
+            if cloud_frame is not None:
+                return cloud_frame
+        except ImportError:
+            pass
+
         if not self.target_device:
             return None
         cmd = [self.adb_bin, "-s", self.target_device, "exec-out", "screencap", "-p"]
@@ -308,6 +335,15 @@ class AdbWorker:
         Grab screenshot and compress in-memory as JPEG bytes.
         Never touches disk, providing high-speed low-latency frames.
         """
+        try:
+            from ui.ui2client import get_latest_client_frame
+            cloud_frame = get_latest_client_frame()
+            if cloud_frame is not None:
+                # Cloud frame is already a compressed JPEG from the user's PC, return it directly!
+                return cloud_frame
+        except ImportError:
+            pass
+
         raw = self.screencap()
         if not raw:
             return None

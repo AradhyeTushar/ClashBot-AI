@@ -1,11 +1,11 @@
 {
   "MULTI_VILLAGE_ENABLED": false,
   "VILLAGE_SWITCH_MINUTES": 10,
-  "VILLAGE_SWITCH_CONDITION": "after_time",
+  "VILLAGE_SWITCH_CONDITION": "loot_full",
   "VILLAGE_COUNT": 10,
   "START_PROFILE": "",
   "EMULATOR_SELECTION": "mumu",
-  "EMULATOR_INSTANCE": "0",
+  "EMULATOR_INSTANCE": "mumu:0",
   "EMULATOR_IP": "127.0.0.1",
   "EMULATOR_PORT": "16384",
   "USE_ROOT_PROFILE_SWAP": false,
@@ -13,7 +13,7 @@
     "bluestacks": "",
     "ldplayer": "",
     "other": "",
-    "mumu": "C:\\Program Files\\Netease\\MuMuPlayer\\nx_main\\MuMuManager.exe"
+    "mumu": ""
   },
   "UI_LANGUAGE": "en",
   "BOT_END_CONDITION_ENABLED": false,
