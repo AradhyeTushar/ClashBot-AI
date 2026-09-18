@@ -17,12 +17,56 @@ import socket
 import threading
 import asyncio
 import websockets
-from typing import Dict, Any, Optional
+import re
+from typing import Dict, Any, Optional, Tuple
 
 from PySide6.QtCore import QObject, Signal
 
-DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 29170
+DEFAULT_HOST = "clashbot-ai.devtushar.uk"
+DEFAULT_PORT = 443
+
+
+def sanitize_host_and_port(raw_host: Any, raw_port: Any = 443) -> Tuple[str, int]:
+    """
+    Bulletproof normalization of server host and port.
+    Strips schemes (http://, https://, ws://, wss://), trailing slashes,
+    extracts port if present in host (e.g. host:443 or host443), and returns (host, port).
+    """
+    h = str(raw_host or "").strip()
+    # Strip URL schemes
+    h = re.sub(r'^(https?|wss?)://', '', h, flags=re.IGNORECASE).rstrip('/')
+
+    p: Optional[int] = None
+
+    # Strip path if attached (e.g. clashbot-ai.devtushar.uk/ws/bot1)
+    if "/" in h:
+        parts = h.split("/", 1)
+        h = parts[0].strip()
+
+    # Handle colon in host (e.g. clashbot-ai.devtushar.uk:443)
+    if ":" in h:
+        parts = h.split(":", 1)
+        h = parts[0].strip()
+        if parts[1].strip().isdigit():
+            p = int(parts[1].strip())
+    # Handle accidental concatenation without colon (e.g. clashbot-ai.devtushar.uk443)
+    elif h.endswith("443") and not h.endswith(".443") and not h.replace(".", "").isdigit():
+        h = h[:-3].strip()
+        p = 443
+    elif h.endswith("29170") and not h.replace(".", "").isdigit():
+        h = h[:-5].strip()
+        p = 29170
+
+    if p is None:
+        try:
+            p = int(raw_port)
+        except (ValueError, TypeError):
+            p = 443 if ("devtushar" in h or "clashbot" in h) else 29170
+
+    if not h:
+        h = DEFAULT_HOST
+
+    return h, p
 
 
 class ClientBridge(QObject):
@@ -46,8 +90,7 @@ class ClientBridge(QObject):
 
     def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, parent=None):
         super().__init__(parent)
-        self.host = host
-        self.port = port
+        self.host, self.port = sanitize_host_and_port(host, port)
 
         self._socket: Optional[socket.socket] = None
         self._running = False
@@ -92,16 +135,22 @@ class ClientBridge(QObject):
         """Continuously attempt connection and handle incoming messages via WebSockets."""
         while self._running:
             try:
-                host_target = self.host.strip()
+                host_target, port_target = sanitize_host_and_port(self.host, self.port)
+                self.host = host_target
+                self.port = port_target
+
                 if "/" not in host_target and ("devtushar" in host_target or "clashbot" in host_target):
                     path_suffix = "/ws/bot1"
                 else:
                     path_suffix = ""
 
-                url = f"wss://{host_target}{path_suffix}" if self.port in (443, 80) or "cloudflared" in host_target or "devtushar" in host_target else f"ws://{host_target}:{self.port}"
-                if url.startswith("wss://") and self.port == 80:
-                    url = url.replace("wss://", "ws://")
-                
+                if self.port == 443 or "devtushar" in host_target or "clashbot" in host_target:
+                    url = f"wss://{host_target}{path_suffix}"
+                elif self.port == 80:
+                    url = f"ws://{host_target}{path_suffix}"
+                else:
+                    url = f"ws://{host_target}:{self.port}{path_suffix}"
+
                 self.status_message.emit(f"Connecting to {url}...")
                 
                 async with websockets.connect(url, max_size=2**24, ping_interval=None) as ws:

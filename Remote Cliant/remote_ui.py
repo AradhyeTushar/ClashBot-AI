@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
     QSizePolicy, QButtonGroup
 )
 
-from client_bridge import ClientBridge
+from client_bridge import ClientBridge, DEFAULT_HOST, DEFAULT_PORT, sanitize_host_and_port
 import styles
 
 CLIENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -239,7 +239,7 @@ class RemoteMainWindow(QMainWindow):
         self.website_btn.setCursor(Qt.PointingHandCursor)
         
         # Determine URL based on dev environment or production
-        website_url = "http://clashbot-ai.devtushar.uk"
+        website_url = "https://clashbot-ai.devtushar.uk"
         self.website_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(website_url)))
         layout.addWidget(self.website_btn)
 
@@ -324,9 +324,9 @@ class RemoteMainWindow(QMainWindow):
 
         srv_row = QHBoxLayout()
         srv_row.setSpacing(4)
-        self.server_ip_input = QLineEdit("127.0.0.1")
-        self.server_ip_input.setPlaceholderText("Host IP")
-        self.server_port_input = QLineEdit("29170")
+        self.server_ip_input = QLineEdit("clashbot-ai.devtushar.uk")
+        self.server_ip_input.setPlaceholderText("clashbot-ai.devtushar.uk")
+        self.server_port_input = QLineEdit("443")
         self.server_port_input.setFixedWidth(52)
         self.reconnect_server_btn = QPushButton("Connect")
         self.reconnect_server_btn.setCursor(Qt.PointingHandCursor)
@@ -1269,11 +1269,12 @@ class RemoteMainWindow(QMainWindow):
 
     def _on_reconnect_clicked(self):
         """Handle user reconnect request with custom IP/Port."""
-        new_host = self.server_ip_input.text().strip()
-        try:
-            new_port = int(self.server_port_input.text().strip())
-        except ValueError:
-            new_port = 29170
+        new_host, new_port = sanitize_host_and_port(
+            self.server_ip_input.text(),
+            self.server_port_input.text()
+        )
+        self.server_ip_input.setText(new_host)
+        self.server_port_input.setText(str(new_port))
 
         if self.bridge:
             self.bridge.stop()
@@ -1505,6 +1506,8 @@ class RemoteMainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = RemoteMainWindow()
+    bridge = ClientBridge(DEFAULT_HOST, DEFAULT_PORT)
+    window = RemoteMainWindow(bridge=bridge)
+    bridge.start()
     window.show()
     sys.exit(app.exec())

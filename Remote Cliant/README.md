@@ -43,6 +43,6 @@ python run.py
   - High-performance local socket server running on `127.0.0.1:29170`.
   - Dispatches actions safely onto the Qt main GUI thread (`animateClick()`, `click()`, `switch_page()`).
 - **Remote Client Bridge (`Remote Cliant/client_bridge.py`)**:
-  - Asynchronous socket client with auto-reconnect and Qt signal routing.
+  - Asynchronous WebSocket client connecting by default to `clashbot-ai.devtushar.uk:443` (WSS/SSL) or local server `127.0.0.1:29170` with auto-reconnect and Qt signal routing.
 - **Remote Client UI (`Remote Cliant/remote_ui.py`)**:
   - Exact aesthetic replica of ClashBot AI's dark gaming UI.

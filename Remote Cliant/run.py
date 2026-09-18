@@ -27,15 +27,15 @@ if CLIENT_DIR not in sys.path:
 os.chdir(CLIENT_DIR)
 
 from PySide6.QtWidgets import QApplication
-from client_bridge import ClientBridge, DEFAULT_HOST, DEFAULT_PORT
+from client_bridge import ClientBridge, DEFAULT_HOST, DEFAULT_PORT, sanitize_host_and_port
 from remote_ui import RemoteMainWindow
 
 
 def load_client_config() -> Dict[str, Any]:
     """Load configuration from local client_config.json."""
     default_config = {
-        "SERVER_HOST": "127.0.0.1",
-        "SERVER_PORT": 29170,
+        "SERVER_HOST": "clashbot-ai.devtushar.uk",
+        "SERVER_PORT": 443,
         "AUTO_CONNECT": True,
         "TIMEOUT_SECONDS": 5.0
     }
@@ -90,8 +90,20 @@ def main():
     print("=" * 65)
 
     config = load_client_config()
-    server_host = config.get("SERVER_HOST", DEFAULT_HOST)
-    server_port = int(config.get("SERVER_PORT", DEFAULT_PORT))
+    server_host, server_port = sanitize_host_and_port(
+        config.get("SERVER_HOST", DEFAULT_HOST),
+        config.get("SERVER_PORT", DEFAULT_PORT)
+    )
+
+    # Persist sanitized values back to client_config.json
+    if config.get("SERVER_HOST") != server_host or config.get("SERVER_PORT") != server_port:
+        config["SERVER_HOST"] = server_host
+        config["SERVER_PORT"] = server_port
+        try:
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=2)
+        except Exception:
+            pass
 
     print(f"[*] Target Server: {server_host}:{server_port}")
 
