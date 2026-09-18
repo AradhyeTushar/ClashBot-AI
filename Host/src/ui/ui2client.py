@@ -21,14 +21,14 @@ import threading
 import traceback
 from typing import Optional, Dict, Any, List
 
-from PySide6.QtCore import QTimer, QMetaObject, Qt, QObject, Signal
+from PySide6.QtCore import QTimer, QMetaObject, Qt, QObject, Signal, Slot
 from PySide6.QtWidgets import (
     QWidget, QPushButton, QToolButton, QCheckBox, QRadioButton,
     QLineEdit, QComboBox, QSpinBox, QSlider, QTextEdit, QLabel
 )
 
 HOST_PORT = 29170
-HOST_IP = "127.0.0.1"
+HOST_IP = os.environ.get("CLASHBOT_HOST_IP", "0.0.0.0")
 
 _server_socket: Optional[socket.socket] = None
 _server_thread: Optional[threading.Thread] = None
@@ -56,6 +56,13 @@ _hooked_widgets = set()
 class HostBridgeDispatcher(QObject):
     """Qt Object to bridge worker thread actions to Qt main GUI thread."""
     dispatch_action = Signal(dict)
+
+    @Slot(dict)
+    def on_dispatch(self, action_data: dict) -> None:
+        try:
+            execute_remote_action_on_gui_thread(action_data)
+        except Exception as e:
+            print(f"[ui2client] Error in on_dispatch: {e}")
 
 _dispatcher = HostBridgeDispatcher()
 
@@ -613,7 +620,7 @@ def execute_remote_action_on_gui_thread(action: Dict[str, Any]) -> None:
 
 
 # Connect Qt signal for thread-safe cross-thread GUI dispatch
-_dispatcher.dispatch_action.connect(execute_remote_action_on_gui_thread)
+_dispatcher.dispatch_action.connect(_dispatcher.on_dispatch, Qt.QueuedConnection)
 
 def _dispatch_to_gui(action_data: Dict[str, Any]) -> None:
     """Schedule action execution on the Qt main GUI thread via queued signal."""
@@ -647,6 +654,8 @@ def _handle_client_connection(client_sock: socket.socket, addr: tuple) -> None:
                 if not line:
                     continue
                 try:
+
+
                     msg = json.loads(line)
                     msg_type = msg.get("type", "action")
                     if msg_type == "ping":

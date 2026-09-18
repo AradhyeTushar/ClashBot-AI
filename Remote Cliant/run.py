@@ -1,47 +1,62 @@
 # -*- coding: utf-8 -*-
 """
-ClashBot AI - Remote Client Launcher
+ClashBot AI - Remote Client Launcher (100% Standalone)
 Author: Aradhye Tushar (https://github.com/AradhyeTushar)
 Repository: https://github.com/AradhyeTushar/ClashBot-AI
-License: MIT License - Copyright (c) 2026 Aradhye Tushar
+License: MIT License - Copyright (c) 2026 Aradhye Tushar. All rights reserved.
 
-Launches the Remote Client UI.
-Automatically launches Host/run.py if not already running,
-so both the Host UI and the Remote Client UI open simultaneously side-by-side
-allowing live visual verification of all remote clicks and actions.
+Launches the 100% Standalone Remote Client application.
+Reads connection parameters from client_config.json and connects to the Host Server.
+Zero Host dependencies or proprietary source code required.
 """
 
 import os
 import sys
+import json
 import time
 import socket
 import subprocess
-from typing import Optional
+from typing import Optional, Dict, Any
 
-# Setup directories
-client_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(client_dir)
-host_src_dir = os.path.join(project_root, "Host", "src")
-host_dir = os.path.join(project_root, "Host")
+CLIENT_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(CLIENT_DIR, "client_config.json")
 
-if host_src_dir not in sys.path:
-    sys.path.insert(0, host_src_dir)
-if client_dir not in sys.path:
-    sys.path.insert(0, client_dir)
-
-# Ensure current working directory is host_src_dir for asset and module loading
-os.chdir(host_src_dir)
-
-# Enforce client mode so ui2client server is not started locally
-os.environ["CLASHBOT_CLIENT_MODE"] = "1"
+# Ensure Client directory is in sys.path and set as current working directory
+if CLIENT_DIR not in sys.path:
+    sys.path.insert(0, CLIENT_DIR)
+os.chdir(CLIENT_DIR)
 
 from PySide6.QtWidgets import QApplication
 from client_bridge import ClientBridge, DEFAULT_HOST, DEFAULT_PORT
 from remote_ui import RemoteMainWindow
 
 
-def is_host_running(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> bool:
-    """Check if Host UI ui2client bridge server is actively listening."""
+def load_client_config() -> Dict[str, Any]:
+    """Load configuration from local client_config.json."""
+    default_config = {
+        "SERVER_HOST": "127.0.0.1",
+        "SERVER_PORT": 29170,
+        "AUTO_CONNECT": True,
+        "TIMEOUT_SECONDS": 5.0
+    }
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                default_config.update(loaded)
+        except Exception as e:
+            print(f"[!] Warning: Could not read {CONFIG_FILE}: {e}")
+    else:
+        try:
+            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                json.dump(default_config, f, indent=2)
+        except Exception:
+            pass
+    return default_config
+
+
+def is_server_listening(host: str, port: int) -> bool:
+    """Test if the ClashBot Server is listening on host:port."""
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(0.6)
     try:
@@ -52,17 +67,13 @@ def is_host_running(host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> bool:
         return False
 
 
-def launch_host_engine() -> Optional[subprocess.Popen]:
-    """Launch Host/run.py in a background process if not already running."""
+def maybe_launch_local_host(host_dir: str) -> Optional[subprocess.Popen]:
+    """Optional convenience for local development PC only."""
     host_run_script = os.path.join(host_dir, "run.py")
-
     if not os.path.exists(host_run_script):
-        sys.__stdout__.write(f"[!] Warning: Host run.py not found at {host_run_script}\n")
-        sys.__stdout__.flush()
         return None
 
-    sys.__stdout__.write(f"[+] Launching Main Host UI engine: {host_run_script}\n")
-    sys.__stdout__.flush()
+    print(f"[+] Developer Mode: Launching local Host engine ({host_run_script})...")
     proc = subprocess.Popen(
         [sys.executable, host_run_script],
         cwd=host_dir,
@@ -72,65 +83,50 @@ def launch_host_engine() -> Optional[subprocess.Popen]:
 
 
 def main():
-    real_out = sys.__stdout__
-    real_out.write("=" * 65 + "\n")
-    real_out.write("  ClashBot AI - Remote Client Launcher\n")
-    real_out.write("  Author: Aradhye Tushar (https://github.com/AradhyeTushar)\n")
-    real_out.write("=" * 65 + "\n")
-    real_out.flush()
+    print("=" * 65)
+    print("  ClashBot AI - Standalone Remote Client")
+    print("  Author: Aradhye Tushar (https://github.com/AradhyeTushar)")
+    print("  License: MIT License - Copyright (c) 2026 Aradhye Tushar")
+    print("=" * 65)
 
-    host_proc = None
-    if not is_host_running():
-        real_out.write("[*] Host engine is not running. Launching Host UI (Host/run.py)...\n")
-        real_out.flush()
-        host_proc = launch_host_engine()
-        # Give Host UI a moment to initialize its window and server
-        real_out.write("[*] Waiting for Host UI engine to initialize...\n")
-        real_out.flush()
-        for _ in range(30):
-            if is_host_running():
-                real_out.write("[+] Host UI engine bridge is online!\n")
-                real_out.flush()
-                break
-            time.sleep(0.4)
-    else:
-        real_out.write("[+] Detected existing running Host UI engine.\n")
-        real_out.flush()
+    config = load_client_config()
+    server_host = config.get("SERVER_HOST", DEFAULT_HOST)
+    server_port = int(config.get("SERVER_PORT", DEFAULT_PORT))
+
+    print(f"[*] Target Server: {server_host}:{server_port}")
+
+    # For local development: if server_host is 127.0.0.1 and Host exists locally, offer auto-launch
+    parent_dir = os.path.dirname(CLIENT_DIR)
+    local_host_dir = os.path.join(parent_dir, "Host")
+    if server_host in ("127.0.0.1", "localhost") and os.path.exists(local_host_dir):
+        if not is_server_listening(server_host, server_port):
+            print("[*] Local Host not detected. Launching local Host server...")
+            maybe_launch_local_host(local_host_dir)
+            for _ in range(25):
+                if is_server_listening(server_host, server_port):
+                    print("[+] Local Host server is online!")
+                    break
+                time.sleep(0.4)
 
     # Initialize Qt Application
-    app = QApplication.instance()
-    if not app:
-        app = QApplication(sys.argv)
+    app = QApplication(sys.argv)
     app.setApplicationName("ClashBot AI Remote Client")
 
-    # Start Client Bridge
-    bridge = ClientBridge(DEFAULT_HOST, DEFAULT_PORT)
-    bridge.start()
+    # Initialize Client Bridge
+    bridge = ClientBridge(host=server_host, port=server_port)
 
-    # Create and show Remote UI window
-    window = RemoteMainWindow(bridge)
-
-    # Position Remote UI window slightly offset so Host UI and Remote UI are both visible side-by-side
-    screen_geo = app.primaryScreen().availableGeometry()
-    win_w = 1000
-    win_h = 650
-    if screen_geo.width() >= 1900:
-        target_x = screen_geo.x() + (screen_geo.width() - win_w) - 30
-        target_y = screen_geo.y() + 50
-    else:
-        target_x = screen_geo.x() + 40
-        target_y = screen_geo.y() + 40
-    window.setGeometry(target_x, target_y, win_w, win_h)
+    # Create & Display Window
+    window = RemoteMainWindow(bridge=bridge)
+    window.title_bar.server_info_lbl.setText(f"Server: {server_host}:{server_port}")
+    window.server_ip_input.setText(server_host)
+    window.server_port_input.setText(str(server_port))
     window.show()
 
-    real_out.write("[+] Remote Client UI launched successfully.\n")
-    real_out.write("[+] Both Host UI and Remote UI are active on desktop.\n")
-    real_out.write("[+] Ready for remote clicks and synchronization!\n")
-    real_out.flush()
+    # Start Bridge Connection in background
+    if config.get("AUTO_CONNECT", True):
+        bridge.start()
 
-    ret = app.exec()
-    bridge.stop()
-    sys.exit(ret)
+    sys.exit(app.exec())
 
 
 if __name__ == "__main__":

@@ -473,14 +473,14 @@ QGroupBox::title {{
 /* ---------------- Settings Drawer ---------------- */
 
 #SettingsDrawer {{
-    background-color: #1D212A;
-    border: 2px solid #2F3546;
-    border-radius: 8px;
-    padding: 12px;
+    background-color: #171A22;
+    border-bottom: 2px solid #8B55F6;
+    border-radius: 0px;
+    padding: 14px 20px;
     margin: 0px;
-    min-width: 250px;
-    max-width: 250px;
 }}
+
+
 
 /* ---------------- Focus Host Button ---------------- */
 
