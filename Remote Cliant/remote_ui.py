@@ -239,7 +239,7 @@ class RemoteMainWindow(QMainWindow):
         self.website_btn.setCursor(Qt.PointingHandCursor)
         
         # Determine URL based on dev environment or production
-        website_url = "https://www.clashbot-ai.com"
+        website_url = "https://www.clashbot-ai.drtushar.uk"
         self.website_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(website_url)))
         layout.addWidget(self.website_btn)
 
