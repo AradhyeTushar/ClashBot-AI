@@ -44,6 +44,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip uninstall -y opencv-python && \
     pip install --no-cache-dir opencv-python-headless
 
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 # Copy the entire Host engine codebase (including PyArmor files)
 COPY Host/ /app/Host/
 
@@ -54,6 +58,5 @@ ENV CLASHBOT_HOST_IP="0.0.0.0"
 # Expose the ui2client Bridge Port
 EXPOSE 29170
 
-# Launch the Host Engine using xvfb (X Virtual FrameBuffer)
-# This allows PySide6 to run headlessly in the cloud container without crashing
-CMD ["xvfb-run", "-a", "--server-args=-screen 0 1024x768x24", "python", "/app/Host/run.py"]
+# Launch using entrypoint.sh
+ENTRYPOINT ["/app/entrypoint.sh"]
