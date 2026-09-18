@@ -40,3 +40,13 @@ services:
     restart: unless-stopped
     mem_limit: 512m
     cpus: 0.5
+
+  # Website Hosting Service
+  website_server:
+    image: nginx:alpine
+    container_name: clashbot_website
+    ports:
+      - "80:80"
+    volumes:
+      - ./Website:/usr/share/nginx/html:ro
+    restart: unless-stopped
