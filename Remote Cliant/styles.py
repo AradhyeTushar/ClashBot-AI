@@ -158,6 +158,28 @@ QPushButton[nav_button="true"]:pressed {{
     background-color: rgba(148, 163, 184, 0.24);
 }}
 
+/* Website and Settings Bottom Sidebar Buttons */
+#WebsiteBtn, #SettingsToggleBtn {{
+    background: transparent;
+    border: none;
+    color: #C9CCD6;
+    text-align: left;
+    padding: 7px 14px 7px 14px;
+    margin: 2px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+}}
+
+#WebsiteBtn:hover, #SettingsToggleBtn:hover {{
+    background-color: rgba(148, 163, 184, 0.14);
+    color: #E6EAF2;
+}}
+
+#WebsiteBtn:pressed, #SettingsToggleBtn:pressed {{
+    background-color: rgba(148, 163, 184, 0.24);
+}}
+
 /* ---------------- Text & Labels ---------------- */
 
 QLabel {{
