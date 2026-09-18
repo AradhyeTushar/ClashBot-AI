@@ -45,8 +45,16 @@ services:
   website_server:
     image: nginx:alpine
     container_name: clashbot_website
-    ports:
-      - "8181:80"
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.clashbot-web.rule=Host(`clashbot-ai.devtushar.uk`)"
+      - "traefik.http.services.clashbot-web.loadbalancer.server.port=80"
     volumes:
       - ./Website:/usr/share/nginx/html:ro
     restart: unless-stopped
+
+networks:
+  dokploy-network:
+    external: true
