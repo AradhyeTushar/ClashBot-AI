@@ -65,6 +65,22 @@ class TitleBar(QFrame):
 
         layout.addStretch()
 
+        # Connection Status Pill Badge
+        self.conn_pill = QLabel("🟡 Connecting...")
+        self.conn_pill.setObjectName("TitleConnPill")
+        self.conn_pill.setStyleSheet("""
+            QLabel {
+                background-color: rgba(245, 158, 11, 0.18);
+                color: #FBBF24;
+                border: 1px solid rgba(245, 158, 11, 0.4);
+                border-radius: 11px;
+                padding: 2px 10px;
+                font-size: 11px;
+                font-weight: bold;
+            }
+        """)
+        layout.addWidget(self.conn_pill)
+
         # Minimize Button
         self.min_btn = QPushButton("–")
         self.min_btn.setObjectName("TitleMinBtn")
@@ -81,6 +97,34 @@ class TitleBar(QFrame):
 
     def set_title(self, text: str):
         self.title_lbl.setText(text)
+
+    def set_connection_status(self, connected: bool, text: Optional[str] = None):
+        if connected:
+            self.conn_pill.setText(text or "🟢 Connected (Cloud)")
+            self.conn_pill.setStyleSheet("""
+                QLabel {
+                    background-color: rgba(16, 185, 129, 0.18);
+                    color: #34D399;
+                    border: 1px solid rgba(16, 185, 129, 0.4);
+                    border-radius: 11px;
+                    padding: 2px 10px;
+                    font-size: 11px;
+                    font-weight: bold;
+                }
+            """)
+        else:
+            self.conn_pill.setText(text or "🟡 Connecting...")
+            self.conn_pill.setStyleSheet("""
+                QLabel {
+                    background-color: rgba(245, 158, 11, 0.18);
+                    color: #FBBF24;
+                    border: 1px solid rgba(245, 158, 11, 0.4);
+                    border-radius: 11px;
+                    padding: 2px 10px;
+                    font-size: 11px;
+                    font-weight: bold;
+                }
+            """)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -1312,7 +1356,9 @@ class RemoteMainWindow(QMainWindow):
     def _on_server_connected(self):
         """Server is online and connection is established."""
         self.title_bar.set_title("ClashBot AI Pro v2.1.5 | Android Device (16384)")
+        self.title_bar.set_connection_status(True, "🟢 Connected (Cloud)")
         self.status.setText("Idle")
+        self.append_log("[Network] Successfully connected to ClashBot Cloud Server.")
         if hasattr(self, "reconnect_server_btn") and self.reconnect_server_btn:
             self.reconnect_server_btn.setText("Connected")
             self.reconnect_server_btn.setStyleSheet("""
@@ -1331,6 +1377,7 @@ class RemoteMainWindow(QMainWindow):
     def _on_server_disconnected(self):
         """Server went offline or connection dropped."""
         self.title_bar.set_title("ClashBot AI Pro v2.1.5 | Android Device (16384)")
+        self.title_bar.set_connection_status(False, "🟡 Connecting...")
         self.status.setText("Idle")
         self._update_worker_badge(False, "", False, "")
         if hasattr(self, "reconnect_server_btn") and self.reconnect_server_btn:
@@ -1350,8 +1397,15 @@ class RemoteMainWindow(QMainWindow):
             """)
 
     def _on_bridge_status(self, msg: str):
-        """Display network status line when disconnected."""
-        pass
+        """Display network status line in log and update UI pill."""
+        self.append_log(f"[Network] {msg}")
+        msg_l = msg.lower()
+        if "connected to" in msg_l:
+            self.title_bar.set_connection_status(True, "🟢 Connected (Cloud)")
+        elif "connecting" in msg_l:
+            self.title_bar.set_connection_status(False, "🟡 Connecting...")
+        elif "disconnected" in msg_l or "error" in msg_l:
+            self.title_bar.set_connection_status(False, "🔴 Offline")
 
     def _on_full_state(self, state: Dict[str, Any]):
         """Receive full state snapshot from Server and synchronize all UI controls."""

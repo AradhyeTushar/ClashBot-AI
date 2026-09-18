@@ -127,17 +127,37 @@ def main():
     # Initialize Client Bridge
     bridge = ClientBridge(host=server_host, port=server_port)
 
+    # Wire console status logging so terminal displays live progress
+    def _on_bridge_status(msg: str):
+        print(f"[*] {msg}", flush=True)
+
+    def _on_bridge_connected():
+        print(f"[+] Connected to ClashBot Server ({server_host}:{server_port}) successfully!", flush=True)
+
+    def _on_bridge_disconnected():
+        print(f"[!] Disconnected from server. Reconnecting in background...", flush=True)
+
+    bridge.status_message.connect(_on_bridge_status)
+    bridge.connected.connect(_on_bridge_connected)
+    bridge.disconnected.connect(_on_bridge_disconnected)
+
     # Initialize Local ADB Worker & Attach to Bridge
     try:
         from remote_adb_worker import RemoteAdbWorker
         adb_worker = RemoteAdbWorker()
         bridge.attach_adb_worker(adb_worker)
-        # Attempt auto-detecting a local emulator
-        adb_worker.auto_detect_device()
+        # Probe emulator in background thread so UI launches instantly without freezing
+        import threading
+        threading.Thread(
+            target=adb_worker.auto_detect_device,
+            daemon=True,
+            name="AdbWorkerAutoDetect"
+        ).start()
     except Exception as e:
-        print(f"[!] Warning: Could not initialize RemoteAdbWorker: {e}")
+        print(f"[!] Notice: Local ADB worker skipped: {e}", flush=True)
 
     # Create & Display Window
+    print("[*] Launching Remote Client User Interface...", flush=True)
     window = RemoteMainWindow(bridge=bridge)
     if hasattr(window, "server_ip_input") and window.server_ip_input:
         window.server_ip_input.setText(server_host)
