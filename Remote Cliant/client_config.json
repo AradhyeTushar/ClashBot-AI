@@ -1,5 +1,5 @@
 {
-  "SERVER_HOST": "bot1.clashbot-ai.devtushar.uk",
+  "SERVER_HOST": "clashbot-ai.devtushar.uk",
   "SERVER_PORT": 443,
   "AUTO_CONNECT": true,
   "TIMEOUT_SECONDS": 5.0
