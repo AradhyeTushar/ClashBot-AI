@@ -9,10 +9,12 @@ services:
       - "29171:29170"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.clashbot-bot1.rule=Host(`bot1.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-bot1.rule=Host(`bot1.clashbot-ai.devtushar.uk`) || (Host(`clashbot-ai.devtushar.uk`) && PathPrefix(`/ws/bot1`))"
       - "traefik.http.routers.clashbot-bot1.entrypoints=web,websecure"
       - "traefik.http.routers.clashbot-bot1.tls=true"
       - "traefik.http.routers.clashbot-bot1.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.strip-bot1.stripprefix.prefixes=/ws/bot1"
+      - "traefik.http.routers.clashbot-bot1.middlewares=strip-bot1"
       - "traefik.http.services.clashbot-bot1.loadbalancer.server.port=29170"
       - "traefik.http.services.clashbot-bot1.loadbalancer.passhostheader=true"
     restart: unless-stopped
@@ -29,10 +31,12 @@ services:
       - "29172:29170"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.clashbot-bot2.rule=Host(`bot2.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-bot2.rule=Host(`bot2.clashbot-ai.devtushar.uk`) || (Host(`clashbot-ai.devtushar.uk`) && PathPrefix(`/ws/bot2`))"
       - "traefik.http.routers.clashbot-bot2.entrypoints=web,websecure"
       - "traefik.http.routers.clashbot-bot2.tls=true"
       - "traefik.http.routers.clashbot-bot2.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.strip-bot2.stripprefix.prefixes=/ws/bot2"
+      - "traefik.http.routers.clashbot-bot2.middlewares=strip-bot2"
       - "traefik.http.services.clashbot-bot2.loadbalancer.server.port=29170"
       - "traefik.http.services.clashbot-bot2.loadbalancer.passhostheader=true"
     restart: unless-stopped
@@ -49,10 +53,12 @@ services:
       - "29173:29170"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.clashbot-bot3.rule=Host(`bot3.clashbot-ai.devtushar.uk`)"
+      - "traefik.http.routers.clashbot-bot3.rule=Host(`bot3.clashbot-ai.devtushar.uk`) || (Host(`clashbot-ai.devtushar.uk`) && PathPrefix(`/ws/bot3`))"
       - "traefik.http.routers.clashbot-bot3.entrypoints=web,websecure"
       - "traefik.http.routers.clashbot-bot3.tls=true"
       - "traefik.http.routers.clashbot-bot3.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.strip-bot3.stripprefix.prefixes=/ws/bot3"
+      - "traefik.http.routers.clashbot-bot3.middlewares=strip-bot3"
       - "traefik.http.services.clashbot-bot3.loadbalancer.server.port=29170"
       - "traefik.http.services.clashbot-bot3.loadbalancer.passhostheader=true"
     restart: unless-stopped
