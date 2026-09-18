@@ -54,6 +54,7 @@ COPY Host/ /app/Host/
 # Set Python path to ensure imports work correctly
 ENV PYTHONPATH="/app/Host/src"
 ENV CLASHBOT_HOST_IP="0.0.0.0"
+ENV PYTHONUNBUFFERED="1"
 
 # Expose the ui2client Bridge Port
 EXPOSE 29170

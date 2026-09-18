@@ -693,9 +693,16 @@ def _server_loop_async(port: int) -> None:
     global _ws_loop
     _ws_loop = asyncio.new_event_loop()
     asyncio.set_event_loop(_ws_loop)
-    start_server = websockets.serve(ws_handler, HOST_IP, port, max_size=2**24)
-    _ws_loop.run_until_complete(start_server)
-    _ws_loop.run_forever()
+
+    async def _runner():
+        async with websockets.serve(ws_handler, HOST_IP, port, max_size=2**24):
+            print(f"[+] [ui2client] WebSocket Server actively listening on ws://{HOST_IP}:{port}")
+            await asyncio.Future()
+
+    try:
+        _ws_loop.run_until_complete(_runner())
+    except Exception as e:
+        print(f"[ui2client] Server loop exception: {e}")
 
 def start_ui2client_server(port: int = HOST_PORT) -> bool:
     """Start the background ui2client bridge server."""
