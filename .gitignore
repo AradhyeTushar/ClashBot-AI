@@ -12,7 +12,8 @@ env/
 *.log
 logs/
 src/logs/
-src/profiles/
+src/profiles/*.json
+src/profiles/*.txt
 launch.log
 
 # IDE & Editor files
